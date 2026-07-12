@@ -35,14 +35,20 @@ local ESP_Settings = {
     TeamCheck = false,
     CModelMode = false,
     Box = true,
-    WallCheck = false,
-    Tracers = false,
-    TracerThickness = 1,
-    TracerTransparency = 1,
     NameInfo = true,
     HealthBar = true,
     Chams = false,
-    ChamsTransparency = 0.5,
+    WallCheck = false,
+    Tracers = false,
+    
+    -- Новые настройки слайдеров
+    BoxThickness = 1,
+    BoxTransparency = 1,
+    ChamsFillTransparency = 0.5,
+    ChamsOutlineTransparency = 0.2,
+    TracersThickness = 1,
+    TracersTransparency = 1,
+    
     FadeSpeed = 2.5
 }
 
@@ -60,81 +66,70 @@ else
 end
 ESP_GUI.ResetOnSpawn = false
 
-local MainFrame = Instance.new("Frame")
+local MainFrame = Instance.new("ImageLabel")
 MainFrame.Parent = ESP_GUI
-MainFrame.BackgroundColor3 = Color3.fromRGB(18, 18, 22)
-MainFrame.Position = UDim2.new(0.6, 0, 0.2, 0)
-MainFrame.Size = UDim2.new(0, 240, 0, 480)
-MainFrame.BorderSizePixel = 0
+MainFrame.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
+MainFrame.BackgroundTransparency = 1.000
+MainFrame.Position = UDim2.new(0.6, 0, 0.3, 0)
+MainFrame.Size = UDim2.new(0, 230, 0, 420)
+MainFrame.Image = "rbxassetid://3570695787"
+MainFrame.ImageColor3 = Color3.fromRGB(22, 22, 22)
+MainFrame.ScaleType = Enum.ScaleType.Slice
+MainFrame.SliceCenter = Rect.new(100, 100, 100, 100)
+MainFrame.SliceScale = 0.120
 
-local MainCorner = Instance.new("UICorner")
-MainCorner.CornerRadius = UDim.new(0, 10)
-MainCorner.Parent = MainFrame
-
-local MainStroke = Instance.new("UIStroke")
-MainStroke.Parent = MainFrame
-MainStroke.Color = Color3.fromRGB(45, 45, 55)
-MainStroke.Thickness = 1.5
-
-local Header = Instance.new("Frame")
-Header.Parent = MainFrame
-Header.BackgroundColor3 = Color3.fromRGB(25, 25, 32)
-Header.Size = UDim2.new(1, 0, 0, 42)
-Header.BorderSizePixel = 0
-
-local HeaderCorner = Instance.new("UICorner")
-HeaderCorner.CornerRadius = UDim.new(0, 10)
-HeaderCorner.Parent = Header
-
-local HeaderFix = Instance.new("Frame")
-HeaderFix.Parent = Header
-HeaderFix.BackgroundColor3 = Color3.fromRGB(25, 25, 32)
-HeaderFix.Position = UDim2.new(0, 0, 0.7, 0)
-HeaderFix.Size = UDim2.new(1, 0, 0.3, 0)
-HeaderFix.BorderSizePixel = 0
+local HeaderAccent = Instance.new("Frame")
+HeaderAccent.Parent = MainFrame
+HeaderAccent.BackgroundColor3 = Color3.fromRGB(255, 30, 60)
+HeaderAccent.BorderSizePixel = 0
+HeaderAccent.Position = UDim2.new(0, 0, 0, 0)
+HeaderAccent.Size = UDim2.new(1, 0, 0, 3)
 
 local Title = Instance.new("TextLabel")
-Title.Parent = Header
+Title.Parent = MainFrame
 Title.BackgroundTransparency = 1.000
-Title.Position = UDim2.new(0, 14, 0, 0)
-Title.Size = UDim2.new(0.6, 0, 1, 0)
+Title.Size = UDim2.new(1, 0, 0, 38)
 Title.Font = Enum.Font.GothamBold
-Title.Text = "АНИГИЛЯТОР-3000"
-Title.TextColor3 = Color3.fromRGB(255, 60, 60)
+Title.Text = "  АНИГИЛЯТОР-3000"
+Title.TextColor3 = Color3.fromRGB(255, 40, 70)
 Title.TextSize = 13.000
 Title.TextXAlignment = Enum.TextXAlignment.Left
 
 local HintLabel = Instance.new("TextLabel")
-HintLabel.Parent = Header
+HintLabel.Parent = MainFrame
 HintLabel.BackgroundTransparency = 1.000
-HintLabel.Position = UDim2.new(0.4, 0, 0, 0)
-HintLabel.Size = UDim2.new(0.53, 0, 1, 0)
-HintLabel.Font = Enum.Font.GothamMedium
+HintLabel.Position = UDim2.new(-0.05, 0, 0, 0)
+HintLabel.Size = UDim2.new(1, 0, 0, 38)
+HintLabel.Font = Enum.Font.Gotham
 HintLabel.Text = "[RightAlt]"
-HintLabel.TextColor3 = Color3.fromRGB(110, 110, 130)
+HintLabel.TextColor3 = Color3.fromRGB(90, 90, 90)
 HintLabel.TextSize = 10.000
 HintLabel.TextXAlignment = Enum.TextXAlignment.Right
 
-local Container = Instance.new("ScrollingFrame")
-Container.Parent = MainFrame
-Container.BackgroundTransparency = 1.000
-Container.Position = UDim2.new(0, 10, 0, 52)
-Container.Size = UDim2.new(1, -15, 1, -62)
-Container.CanvasSize = UDim2.new(0, 0, 0, 480)
-Container.ScrollBarThickness = 4
-Container.ScrollBarImageColor3 = Color3.fromRGB(35, 35, 45)
-Container.VerticalScrollBarInset = Enum.ScrollBarInset.ScrollBar
+-- Бесшовный контейнер прокрутки (ScrollingFrame)
+local ScrollContainer = Instance.new("ScrollingFrame")
+ScrollContainer.Parent = MainFrame
+ScrollContainer.BackgroundTransparency = 1
+ScrollContainer.Position = UDim2.new(0.04, 0, 0.1, 0)
+ScrollContainer.Size = UDim2.new(0.92, 0, 0.88, 0)
+ScrollContainer.CanvasSize = UDim2.new(0, 0, 0, 680)
+ScrollContainer.ScrollBarThickness = 2
+ScrollContainer.ScrollBarImageColor3 = Color3.fromRGB(60, 60, 60)
+ScrollContainer.BorderSizePixel = 0
+ScrollContainer.TopImage = "rbxasset://textures/ui/Scroll/scroll-middle.png"
+ScrollContainer.BottomImage = "rbxasset://textures/ui/Scroll/scroll-middle.png"
 
 local UIListLayout = Instance.new("UIListLayout")
-UIListLayout.Parent = Container
+UIListLayout.Parent = ScrollContainer
 UIListLayout.SortOrder = Enum.SortOrder.LayoutOrder
 UIListLayout.Padding = UDim.new(0, 6)
 
-local function drag(GuiObj, DragTarget)
+-- Драг интерфейса
+local function drag(GuiObj)
 	local dragToggle, dragInput, dragStart, startPos
 	GuiObj.InputBegan:Connect(function(input)
 		if (input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch) then
-			dragToggle = true; dragStart = input.Position; startPos = DragTarget.Position
+			dragToggle = true; dragStart = input.Position; startPos = GuiObj.Position
 			input.Changed:Connect(function() if input.UserInputState == Enum.UserInputState.End then dragToggle = false end end)
 		end
 	end)
@@ -144,102 +139,116 @@ local function drag(GuiObj, DragTarget)
 	UserInputService.InputChanged:Connect(function(input)
 		if input == dragInput and dragToggle then 
             local Delta = input.Position - dragStart
-		    DragTarget.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + Delta.X, startPos.Y.Scale, startPos.Y.Offset + Delta.Y)
+		    GuiObj.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + Delta.X, startPos.Y.Scale, startPos.Y.Offset + Delta.Y)
         end
 	end)
 end
-drag(Header, MainFrame)
+drag(MainFrame)
 
 local function createToggle(name, settingKey)
     local btn = Instance.new("TextButton")
-    btn.Parent = Container
-    btn.BackgroundColor3 = Color3.fromRGB(24, 24, 30)
+    btn.Parent = ScrollContainer
+    btn.BackgroundColor3 = Color3.fromRGB(28, 28, 28)
     btn.BorderSizePixel = 0
     btn.Size = UDim2.new(1, -4, 0, 30)
     btn.Font = Enum.Font.GothamMedium
-    btn.Text = "    " .. name
-    btn.TextColor3 = Color3.fromRGB(220, 220, 230)
-    btn.TextSize = 11.0
+    btn.Text = "  " .. name
+    btn.TextColor3 = Color3.fromRGB(210, 210, 210)
+    btn.TextSize = 11
     btn.TextXAlignment = Enum.TextXAlignment.Left
 
     local corner = Instance.new("UICorner")
-    corner.CornerRadius = UDim.new(0, 6)
+    corner.CornerRadius = UDim.new(0, 4)
     corner.Parent = btn
 
     local status = Instance.new("Frame")
     status.Parent = btn
-    status.BackgroundColor3 = ESP_Settings[settingKey] and Color3.fromRGB(0, 210, 110) or Color3.fromRGB(210, 45, 45)
-    status.Position = UDim2.new(0.85, 0, 0.28, 0)
-    status.Size = UDim2.new(0, 14, 0, 14)
+    status.BackgroundColor3 = ESP_Settings[settingKey] and Color3.fromRGB(0, 200, 100) or Color3.fromRGB(180, 40, 40)
+    status.Position = UDim2.new(0.86, 0, 0.28, 0)
+    status.Size = UDim2.new(0, 12, 0, 12)
     local scorr = Instance.new("UICorner")
     scorr.CornerRadius = UDim.new(1, 0)
     scorr.Parent = status
 
     btn.MouseButton1Click:Connect(function()
         ESP_Settings[settingKey] = not ESP_Settings[settingKey]
-        status.BackgroundColor3 = ESP_Settings[settingKey] and Color3.fromRGB(0, 210, 110) or Color3.fromRGB(210, 45, 45)
+        status.BackgroundColor3 = ESP_Settings[settingKey] and Color3.fromRGB(0, 200, 100) or Color3.fromRGB(180, 40, 40)
     end)
 end
 
-local function createSlider(name, settingKey, min, max, isFloat)
-    local lbl = Instance.new("TextLabel")
-    lbl.Parent = Container
-    lbl.BackgroundTransparency = 1
-    lbl.Size = UDim2.new(1, -4, 0, 38)
-    lbl.Font = Enum.Font.GothamMedium
-    lbl.Text = "    " .. name .. ": " .. tostring(ESP_Settings[settingKey])
-    lbl.TextColor3 = Color3.fromRGB(180, 180, 195)
-    lbl.TextSize = 10.5
-    lbl.TextXAlignment = Enum.TextXAlignment.Left
+-- Плавный слайдер
+local function createSlider(name, settingKey, min, max, roundTo)
+    local sliderFrame = Instance.new("Frame")
+    sliderFrame.Parent = ScrollContainer
+    sliderFrame.BackgroundColor3 = Color3.fromRGB(28, 28, 28)
+    sliderFrame.Size = UDim2.new(1, -4, 0, 42)
+    sliderFrame.BorderSizePixel = 0
+    
+    local corner = Instance.new("UICorner")
+    corner.CornerRadius = UDim.new(0, 4)
+    corner.Parent = sliderFrame
+
+    local label = Instance.new("TextLabel")
+    label.Parent = sliderFrame
+    label.BackgroundTransparency = 1
+    label.Position = UDim2.new(0.05, 0, 0.08, 0)
+    label.Size = UDim2.new(0.9, 0, 0.4, 0)
+    label.Font = Enum.Font.GothamMedium
+    label.TextSize = 10
+    label.TextColor3 = Color3.fromRGB(180, 180, 180)
+    label.TextXAlignment = Enum.TextXAlignment.Left
+
+    local container = Instance.new("Frame")
+    container.Parent = sliderFrame
+    container.BackgroundTransparency = 1
+    container.Position = UDim2.new(0.05, 0, 0.55, 0)
+    container.Size = UDim2.new(0.9, 0, 0.25, 0)
 
     local bg = Instance.new("Frame")
-    bg.Parent = lbl
-    bg.BackgroundColor3 = Color3.fromRGB(30, 30, 40)
-    bg.Position = UDim2.new(0.04, 0, 0.72, 0)
-    bg.Size = UDim2.new(0.92, 0, 0, 6)
+    bg.Parent = container
+    bg.BackgroundColor3 = Color3.fromRGB(45, 45, 45)
+    bg.Size = UDim2.new(1, 0, 1, 0)
     bg.BorderSizePixel = 0
-    local bgc = Instance.new("UICorner")
-    bgc.CornerRadius = UDim.new(1, 0); bgc.Parent = bg
+    Instance.new("UICorner", bg).CornerRadius = UDim.new(1, 0)
 
     local fill = Instance.new("Frame")
-    fill.Parent = bg
-    fill.BackgroundColor3 = Color3.fromRGB(255, 60, 60)
-    fill.Size = UDim2.new((ESP_Settings[settingKey] - min) / (max - min), 0, 1, 0)
+    fill.Parent = container
+    fill.BackgroundColor3 = Color3.fromRGB(255, 40, 70)
     fill.BorderSizePixel = 0
-    local fc = Instance.new("UICorner")
-    fc.CornerRadius = UDim.new(1, 0); fc.Parent = fill
+    Instance.new("UICorner", fill).CornerRadius = UDim.new(1, 0)
 
-    local dragging = false
-    
-    local function updateSlider(input)
-        local pos = math.clamp((input.Position.X - bg.AbsolutePosition.X) / bg.AbsoluteSize.X, 0, 1)
-        local val = min + (max - min) * pos
-        if not isFloat then 
-            val = math.floor(val + 0.5) 
-        else 
-            val = math.round(val * 100) / 100
+    local function update(input)
+        local pos = math.clamp((input.Position.X - container.AbsolutePosition.X) / container.AbsoluteSize.Width, 0, 1)
+        local value = min + (max - min) * pos
+        if roundTo then
+            value = math.round(value / roundTo) * roundTo
         end
-        ESP_Settings[settingKey] = val
-        fill.Size = UDim2.new((val - min) / (max - min), 0, 1, 0)
-        lbl.Text = "    " .. name .. ": " .. tostring(val)
+        ESP_Settings[settingKey] = value
+        fill.Size = UDim2.new(pos, 0, 1, 0)
+        label.Text = name .. ": " .. string.format("%." .. (roundTo < 1 and "1" or "0") .. "f", value)
     end
 
-    bg.InputBegan:Connect(function(input)
+    local initialPos = (ESP_Settings[settingKey] - min) / (max - min)
+    fill.Size = UDim2.new(initialPos, 0, 1, 0)
+    label.Text = name .. ": " .. string.format("%." .. (roundTo < 1 and "1" or "0") .. "f", ESP_Settings[settingKey])
+
+    local sliding = false
+    container.InputBegan:Connect(function(input)
         if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
-            dragging = true
-            updateSlider(input)
+            sliding = true
+            update(input)
         end
     end)
-    
+
+    UserInputService.InputChanged:Connect(function(input)
+        if sliding and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
+            update(input)
+        end
+    end)
+
     UserInputService.InputEnded:Connect(function(input)
         if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
-            dragging = false
-        end
-    end)
-    
-    UserInputService.InputChanged:Connect(function(input)
-        if dragging and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
-            updateSlider(input)
+            sliding = false
         end
     end)
 end
@@ -248,65 +257,80 @@ createToggle("Master Switch", "Enabled")
 createToggle("Team Check", "TeamCheck")
 createToggle("CModel Mode", "CModelMode")
 createToggle("Show Boxes", "Box")
-createToggle("Wall Check", "WallCheck")
-createToggle("Tracers", "Tracers")
-createSlider("Tracer Thickness", "TracerThickness", 1, 5, true)
-createSlider("Tracer Alpha", "TracerTransparency", 0.1, 1, true)
+createSlider("Box Thickness", "BoxThickness", 1, 5, 1)
+createSlider("Box Transparency", "BoxTransparency", 0.1, 1, 0.1)
+
 createToggle("Name & Distance", "NameInfo")
 createToggle("Health Bar", "HealthBar")
+
 createToggle("Chams", "Chams")
-createSlider("Chams Alpha", "ChamsTransparency", 0.1, 1, true)
+createSlider("Chams Fill Trans.", "ChamsFillTransparency", 0, 1, 0.1)
+createSlider("Chams Outl. Trans.", "ChamsOutlineTransparency", 0, 1, 0.1)
 
-local Divider = Instance.new("Frame")
-Divider.Parent = Container
-Divider.BackgroundColor3 = Color3.fromRGB(38, 38, 48)
-Divider.Size = UDim2.new(1, -4, 0, 1)
-Divider.BorderSizePixel = 0
+createToggle("Wall Check", "WallCheck")
 
+createToggle("Tracers", "Tracers")
+createSlider("Tracers Thickness", "TracersThickness", 1, 5, 1)
+createSlider("Tracers Transparency", "TracersTransparency", 0.1, 1, 0.1)
+
+-- === ФУНКЦИЯ ПОЛНОГО ОТКЛЮЧЕНИЯ (Kill Script) ===
 local function killScript()
     ESP_Settings.Enabled = false
+    
     if _G.PlayerESP_Drawings then
-        for _, draw in ipairs(_G.PlayerESP_Drawings) do pcall(function() draw:Remove() end) end
+        for _, draw in ipairs(_G.PlayerESP_Drawings) do
+            pcall(function() draw:Remove() end)
+        end
     end
+    
     if _G.PlayerESP_Highlights then
-        for _, hl in ipairs(_G.PlayerESP_Highlights) do pcall(function() hl:Destroy() end) end
+        for _, hl in ipairs(_G.PlayerESP_Highlights) do
+            pcall(function() hl:Destroy() end)
+        end
     end
+    
     if _G.PlayerESP_Connections then
-        for _, conn in pairs(_G.PlayerESP_Connections) do pcall(function() conn:Disconnect() end) end
+        for _, conn in pairs(_G.PlayerESP_Connections) do
+            pcall(function() conn:Disconnect() end)
+        end
     end
-    if ESP_GUI then ESP_GUI:Destroy() end
+    
+    if ESP_GUI then
+        ESP_GUI:Destroy()
+    end
 end
 
 local killBtn = Instance.new("TextButton")
-killBtn.Parent = Container
-killBtn.BackgroundColor3 = Color3.fromRGB(160, 35, 35)
+killBtn.Parent = ScrollContainer
+killBtn.BackgroundColor3 = Color3.fromRGB(120, 25, 25)
 killBtn.BorderSizePixel = 0
 killBtn.Size = UDim2.new(1, -4, 0, 32)
 killBtn.Font = Enum.Font.GothamBold
-killBtn.Text = "    Kill Script"
+killBtn.Text = "  Kill Script"
 killBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-killBtn.TextSize = 11.5
+killBtn.TextSize = 11
 killBtn.TextXAlignment = Enum.TextXAlignment.Left
 
 local kCorner = Instance.new("UICorner")
-kCorner.CornerRadius = UDim.new(0, 6)
+kCorner.CornerRadius = UDim.new(0, 4)
 kCorner.Parent = killBtn
 
-killBtn.MouseButton1Click:Connect(function() killScript() end)
+killBtn.MouseButton1Click:Connect(killScript)
 
-local uiToggleConn = UserInputService.InputBegan:Connect(function(input)
+local uiToggleConn = UserInputService.InputBegan:Connect(function(input, gameProcessed)
     if input.KeyCode == Enum.KeyCode.RightAlt then
         MainFrame.Visible = not MainFrame.Visible
     end
 end)
 table.insert(_G.PlayerESP_Connections, uiToggleConn)
 
+-- === ЛОГИКА ESP ===
 local function hideESP(data)
     data.Box.Visible = false
-    data.Tracer.Visible = false
     data.NameText.Visible = false
     data.HealthBar.Visible = false
     data.HealthBarBG.Visible = false
+    data.Tracer.Visible = false
     if data.Chams then data.Chams.Enabled = false end
 end
 
@@ -314,6 +338,7 @@ local function isTeammateCheck(player, character)
     if player == localPlayer then return true end
     if localPlayer.Team ~= nil and player.Team == localPlayer.Team then return true end
     if localPlayer.TeamColor ~= nil and player.TeamColor == localPlayer.TeamColor and not player.Neutral then return true end
+    
     if character then
         for _, attrName in ipairs({"Team", "Clan", "Faction", "Group", "Alliance"}) do
             local charAttr = character:GetAttribute(attrName)
@@ -321,28 +346,25 @@ local function isTeammateCheck(player, character)
             if charAttr and localAttr and charAttr == localAttr then return true end
         end
     end
+    
     for _, attrName in ipairs({"Team", "Clan", "Faction"}) do
         local pAttr = player:GetAttribute(attrName)
         local lAttr = localPlayer:GetAttribute(attrName)
         if pAttr and lAttr and pAttr == lAttr then return true end
     end
+    
     return false
 end
 
-local function isVisible(targetPart)
-    if not targetPart then return false end
-    local origin = camera.CFrame.Position
-    local direction = targetPart.Position - origin
+-- Проверка препятствий (WallCheck)
+local function checkWall(character)
+    if not character or not character:FindFirstChild("HumanoidRootPart") then return false end
+    if not localPlayer.Character or not localPlayer.Character:FindFirstChild("HumanoidRootPart") then return false end
     
-    local raycastParams = RaycastParams.new()
-    raycastParams.FilterType = RaycastFilterType.Exclude
-    local filter = {localPlayer.Character}
-    if targetPart.Parent then table.insert(filter, targetPart.Parent) end
-    raycastParams.FilterDescendantsInstances = filter
-    raycastParams.IgnoreWater = true
+    local targetPart = character.HumanoidRootPart
+    local castParts = camera:GetPartsObscuringTarget({localPlayer.Character, character}, {workspace.CurrentCamera})
     
-    local result = workspace:Raycast(origin, direction, raycastParams)
-    return result == nil
+    return #castParts > 0
 end
 
 local function createESP(player)
@@ -352,29 +374,30 @@ local function createESP(player)
         Player = player,
         FadeAlpha = 0,
         Box = Drawing.new("Square"),
-        Tracer = Drawing.new("Line"),
         NameText = Drawing.new("Text"),
         HealthBarBG = Drawing.new("Square"),
         HealthBar = Drawing.new("Square"),
+        Tracer = Drawing.new("Line"),
         Chams = Instance.new("Highlight")
     }
 
-    data.Box.Visible = false; data.Box.Thickness = 1; data.Box.Filled = false
+    data.Box.Visible = false; data.Box.Color = Color3.fromRGB(255, 255, 255); data.Box.Thickness = 1; data.Box.Transparency = 0; data.Box.Filled = false
     table.insert(_G.PlayerESP_Drawings, data.Box)
 
-    data.Tracer.Visible = false
-    table.insert(_G.PlayerESP_Drawings, data.Tracer)
-
-    data.NameText.Visible = false; data.NameText.Color = Color3.fromRGB(255, 255, 255); data.NameText.Center = true; data.NameText.Outline = true; data.NameText.Size = 13; data.NameText.Font = 2
+    data.NameText.Visible = false; data.NameText.Color = Color3.fromRGB(255, 255, 255); data.NameText.Center = true; data.NameText.Outline = true; data.NameText.Size = 13; data.NameText.Font = 2; data.NameText.Transparency = 0
     table.insert(_G.PlayerESP_Drawings, data.NameText)
 
-    data.HealthBarBG.Visible = false; data.HealthBarBG.Color = Color3.fromRGB(0, 0, 0); data.HealthBarBG.Thickness = 1; data.HealthBarBG.Filled = true
+    data.HealthBarBG.Visible = false; data.HealthBarBG.Color = Color3.fromRGB(0, 0, 0); data.HealthBarBG.Thickness = 1; data.HealthBarBG.Filled = true; data.HealthBarBG.Transparency = 0
     table.insert(_G.PlayerESP_Drawings, data.HealthBarBG)
 
-    data.HealthBar.Visible = false; data.HealthBar.Color = Color3.fromRGB(0, 255, 0); data.HealthBar.Thickness = 1; data.HealthBar.Filled = true
+    data.HealthBar.Visible = false; data.HealthBar.Color = Color3.fromRGB(0, 255, 0); data.HealthBar.Thickness = 1; data.HealthBar.Filled = true; data.HealthBar.Transparency = 0
     table.insert(_G.PlayerESP_Drawings, data.HealthBar)
+    
+    data.Tracer.Visible = false; data.Tracer.Color = Color3.fromRGB(255, 255, 255); data.Tracer.Thickness = 1; data.Tracer.Transparency = 0
+    table.insert(_G.PlayerESP_Drawings, data.Tracer)
 
     data.Chams.Name = "Chams_" .. player.Name
+    data.Chams.FillColor = Color3.fromRGB(255, 50, 50); data.Chams.OutlineColor = Color3.fromRGB(255, 255, 255)
     data.Chams.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop
     data.Chams.Enabled = false
     data.Chams.Parent = ESP_GUI
@@ -384,23 +407,34 @@ local function createESP(player)
 end
 
 for _, player in ipairs(Players:GetPlayers()) do
-    if player ~= localPlayer then ESP_List[player] = createESP(player) end
+    if player ~= localPlayer then
+        ESP_List[player] = createESP(player)
+    end
 end
 
 local addedConn = Players.PlayerAdded:Connect(function(player)
-    if player ~= localPlayer then ESP_List[player] = createESP(player) end
+    if player ~= localPlayer then
+        ESP_List[player] = createESP(player)
+    end
 end)
 table.insert(_G.PlayerESP_Connections, addedConn)
 
 local removedConn = Players.PlayerRemoving:Connect(function(player)
-    if ESP_List[player] then hideESP(ESP_List[player]); ESP_List[player] = nil end
+    if ESP_List[player] then
+        hideESP(ESP_List[player])
+        ESP_List[player] = nil
+    end
 end)
 table.insert(_G.PlayerESP_Connections, removedConn)
 
 local function getPlayersArray()
     local arr = {}
     for p, data in pairs(ESP_List) do
-        if p and p.Parent then table.insert(arr, p) else ESP_List[p] = nil end
+        if p and p.Parent then
+            table.insert(arr, p)
+        else
+            ESP_List[p] = nil
+        end
     end
     return arr
 end
@@ -430,7 +464,7 @@ local renderConn = RunService.RenderStepped:Connect(function(deltaTime)
         local isTeammate = data.IsTeammate or false
 
         local shouldShow = ESP_Settings.Enabled and character and not (ESP_Settings.TeamCheck and isTeammate)
-        local rootPos, headPos, legPos, targetPart
+        local rootPos, headPos, legPos
         local hum = character and character:FindFirstChildOfClass("Humanoid") or nil
 
         if shouldShow then
@@ -438,7 +472,6 @@ local renderConn = RunService.RenderStepped:Connect(function(deltaTime)
                 local cframe, size = character:GetBoundingBox()
                 if not cframe or size == Vector3.new() then shouldShow = false else
                     rootPos = cframe.Position
-                    targetPart = character.PrimaryPart or character:FindFirstChild("HumanoidRootPart") or character:FindFirstChild("Head")
                     local heightY = math.max(size.Y, 2) 
                     headPos = rootPos + Vector3.new(0, heightY / 2, 0)
                     legPos = rootPos - Vector3.new(0, heightY / 2, 0)
@@ -447,7 +480,6 @@ local renderConn = RunService.RenderStepped:Connect(function(deltaTime)
                 local hrp = character:FindFirstChild("HumanoidRootPart")
                 if not hrp or not hum then shouldShow = false else
                     rootPos = hrp.Position
-                    targetPart = hrp
                     local head = character:FindFirstChild("Head")
                     headPos = head and head.Position or (rootPos + Vector3.new(0, 2, 0))
                     legPos = rootPos - Vector3.new(0, 3, 0)
@@ -455,7 +487,9 @@ local renderConn = RunService.RenderStepped:Connect(function(deltaTime)
             end
         end
 
-        if hum and hum.Health <= 0 then shouldShow = false end
+        if hum and hum.Health <= 0 then
+            shouldShow = false
+        end
 
         local vector, onScreen = nil, false
         if shouldShow and rootPos then
@@ -472,35 +506,40 @@ local renderConn = RunService.RenderStepped:Connect(function(deltaTime)
         end
 
         if data.FadeAlpha > 0.01 then
-            local visible = isVisible(targetPart)
-
-            -- Дефолтные цвета (если WallCheck выключен или игрок ЗА стеной)
-            local boxColor = Color3.fromRGB(255, 255, 255)
-            local chamsFillColor = Color3.fromRGB(255, 50, 50)
-
-            -- Условие Wall Check
+            -- Определение видимости за стеной
+            local isBehindWall = false
             if ESP_Settings.WallCheck then
-                if visible then
-                    -- Если НЕ за стеной (виден напрямую)
-                    boxColor = Color3.fromRGB(255, 0, 0)       -- Красный Box
-                    chamsFillColor = Color3.fromRGB(0, 120, 255) -- Синий Chams
+                isBehindWall = checkWall(character)
+            end
+
+            -- Логика цветов на базе WallCheck
+            local finalBoxColor = Color3.fromRGB(255, 255, 255)
+            local finalChamsColor = Color3.fromRGB(255, 50, 50)
+            
+            if ESP_Settings.WallCheck then
+                if isBehindWall then
+                    finalBoxColor = Color3.fromRGB(255, 255, 255) -- Стандартный
+                    finalChamsColor = Color3.fromRGB(255, 50, 50) -- Стандартный
                 else
-                    -- Если ЗА стеной (возврат к стандартным цветам)
-                    boxColor = Color3.fromRGB(255, 255, 255)
-                    chamsFillColor = Color3.fromRGB(255, 50, 50)
+                    finalBoxColor = Color3.fromRGB(255, 0, 0)   -- Красный (открыт)
+                    finalChamsColor = Color3.fromRGB(0, 120, 255) -- Синий (открыт)
                 end
             end
 
-            data.Box.Transparency = data.FadeAlpha
+            -- Общие настройки прозрачностей и толщины
+            data.Box.Transparency = data.FadeAlpha * ESP_Settings.BoxTransparency
+            data.Box.Thickness = ESP_Settings.BoxThickness
+            data.Box.Color = finalBoxColor
+
             data.NameText.Transparency = data.FadeAlpha
             data.HealthBar.Transparency = data.FadeAlpha
             data.HealthBarBG.Transparency = data.FadeAlpha
 
             if ESP_Settings.Chams then
                 data.Chams.Adornee = character
-                data.Chams.FillColor = chamsFillColor
-                data.Chams.FillTransparency = 1 - ((1 - ESP_Settings.ChamsTransparency) * data.FadeAlpha)
-                data.Chams.OutlineTransparency = 1 - (0.8 * data.FadeAlpha) 
+                data.Chams.FillColor = finalChamsColor
+                data.Chams.FillTransparency = 1 - ((1 - ESP_Settings.ChamsFillTransparency) * data.FadeAlpha)
+                data.Chams.OutlineTransparency = 1 - ((1 - ESP_Settings.ChamsOutlineTransparency) * data.FadeAlpha)
                 data.Chams.Enabled = true
             else
                 data.Chams.Adornee = nil
@@ -516,21 +555,9 @@ local renderConn = RunService.RenderStepped:Connect(function(deltaTime)
             if ESP_Settings.Box then
                 data.Box.Size = Vector2.new(width, height)
                 data.Box.Position = Vector2.new(vector.X - width / 2, vector.Y - height / 2)
-                data.Box.Color = boxColor
                 data.Box.Visible = true
             else
                 data.Box.Visible = false
-            end
-
-            if ESP_Settings.Tracers then
-                data.Tracer.From = Vector2.new(camera.ViewportSize.X / 2, camera.ViewportSize.Y)
-                data.Tracer.To = Vector2.new(vector.X, vector.Y + height / 2)
-                data.Tracer.Color = boxColor
-                data.Tracer.Thickness = ESP_Settings.TracerThickness
-                data.Tracer.Transparency = ESP_Settings.TracerTransparency * data.FadeAlpha
-                data.Tracer.Visible = true
-            else
-                data.Tracer.Visible = false
             end
 
             if ESP_Settings.NameInfo then
@@ -559,6 +586,18 @@ local renderConn = RunService.RenderStepped:Connect(function(deltaTime)
             else
                 data.HealthBarBG.Visible = false
                 data.HealthBar.Visible = false
+            end
+
+            -- Логика Трейсеров (Tracers)
+            if ESP_Settings.Tracers then
+                data.Tracer.From = Vector2.new(camera.ViewportSize.X / 2, camera.ViewportSize.Y)
+                data.Tracer.To = Vector2.new(vector.X, vector.Y + height / 2)
+                data.Tracer.Thickness = ESP_Settings.TracersThickness
+                data.Tracer.Transparency = data.FadeAlpha * ESP_Settings.TracersTransparency
+                data.Tracer.Color = finalBoxColor
+                data.Tracer.Visible = true
+            else
+                data.Tracer.Visible = false
             end
         end
     end
