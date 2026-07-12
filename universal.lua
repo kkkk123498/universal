@@ -66,7 +66,7 @@ MainFrame.Parent = ESP_GUI
 MainFrame.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
 MainFrame.BackgroundTransparency = 1.000
 MainFrame.Position = UDim2.new(0.6, 0, 0.3, 0)
-MainFrame.Size = UDim2.new(0, 210, 0, 420) -- Немного увеличил высоту для большего пространства
+MainFrame.Size = UDim2.new(0, 210, 0, 420)
 MainFrame.Image = "rbxassetid://3570695787"
 MainFrame.ImageColor3 = Color3.fromRGB(22, 22, 22)
 MainFrame.ScaleType = Enum.ScaleType.Slice
@@ -74,7 +74,6 @@ MainFrame.SliceCenter = Rect.new(100, 100, 100, 100)
 MainFrame.SliceScale = 0.120
 MainFrame.Active = true
 
--- Тень или акцентная шапка
 local HeaderAccent = Instance.new("Frame")
 HeaderAccent.Parent = MainFrame
 HeaderAccent.BackgroundColor3 = Color3.fromRGB(0, 170, 255)
@@ -92,7 +91,6 @@ Title.TextColor3 = Color3.fromRGB(240, 240, 240)
 Title.TextSize = 13.000
 Title.TextXAlignment = Enum.TextXAlignment.Left
 
--- Индикатор хоткея в заголовке
 local HintLabel = Instance.new("TextLabel")
 HintLabel.Parent = MainFrame
 HintLabel.BackgroundTransparency = 1.000
@@ -104,12 +102,12 @@ HintLabel.TextColor3 = Color3.fromRGB(90, 90, 90)
 HintLabel.TextSize = 10.000
 HintLabel.TextXAlignment = Enum.TextXAlignment.Right
 
--- Скроллинг фрейм для элементов
+-- Скроллинг контейнер, сливающийся боками
 local Container = Instance.new("ScrollingFrame")
 Container.Parent = MainFrame
 Container.BackgroundTransparency = 1
-Container.Position = UDim2.new(0.05, 0, 0.12, 0)
-Container.Size = UDim2.new(0.9, 0, 0.84, 0)
+Container.Position = UDim2.new(0.05, 0, 0.11, 0)
+Container.Size = UDim2.new(0.9, 0, 0.86, 0)
 Container.CanvasSize = UDim2.new(0, 0, 0, 0)
 Container.AutomaticCanvasSize = Enum.AutomaticSize.Y
 Container.ScrollBarThickness = 2
@@ -183,12 +181,13 @@ local function createToggle(name, settingKey)
     table.insert(_G.PlayerESP_Connections, conn)
 end
 
-local function createSlider(name, settingKey, min, max, isFloat)
+-- Поля ввода вместо ползунков
+local function createInputField(name, settingKey, min, max, isFloat)
     local frame = Instance.new("Frame")
     frame.Parent = Container
     frame.BackgroundColor3 = Color3.fromRGB(32, 32, 32)
     frame.BorderSizePixel = 0
-    frame.Size = UDim2.new(1, -5, 0, 42)
+    frame.Size = UDim2.new(1, -5, 0, 35)
     
     local corner = Instance.new("UICorner")
     corner.CornerRadius = UDim.new(0, 6)
@@ -198,71 +197,41 @@ local function createSlider(name, settingKey, min, max, isFloat)
     title.Parent = frame
     title.BackgroundTransparency = 1
     title.Position = UDim2.new(0, 10, 0, 0)
-    title.Size = UDim2.new(1, -20, 0, 22)
+    title.Size = UDim2.new(0.65, -10, 1, 0)
     title.Font = Enum.Font.GothamMedium
-    title.Text = name .. ": " .. tostring(ESP_Settings[settingKey])
+    title.Text = name
     title.TextColor3 = Color3.fromRGB(210, 210, 210)
     title.TextSize = 11.5
     title.TextXAlignment = Enum.TextXAlignment.Left
     
-    local sliderBg = Instance.new("TextButton")
-    sliderBg.Parent = frame
-    sliderBg.Text = ""
-    sliderBg.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
-    sliderBg.Position = UDim2.new(0, 10, 0, 24)
-    sliderBg.Size = UDim2.new(1, -20, 0, 8)
-    local bgCorner = Instance.new("UICorner")
-    bgCorner.CornerRadius = UDim.new(1, 0)
-    bgCorner.Parent = sliderBg
+    local input = Instance.new("TextBox")
+    input.Parent = frame
+    input.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
+    input.BorderSizePixel = 0
+    input.Position = UDim2.new(0.65, 0, 0.15, 0)
+    input.Size = UDim2.new(0.3, 0, 0.7, 0)
+    input.Font = Enum.Font.Gotham
+    input.Text = tostring(ESP_Settings[settingKey])
+    input.TextColor3 = Color3.fromRGB(255, 255, 255)
+    input.TextSize = 11
+    input.ClipsDescendants = true
     
-    local fill = Instance.new("Frame")
-    fill.Parent = sliderBg
-    fill.BackgroundColor3 = Color3.fromRGB(0, 170, 255)
-    fill.Size = UDim2.new(math.clamp((ESP_Settings[settingKey] - min) / (max - min), 0, 1), 0, 1, 0)
-    local fillCorner = Instance.new("UICorner")
-    fillCorner.CornerRadius = UDim.new(1, 0)
-    fillCorner.Parent = fill
+    local inputCorner = Instance.new("UICorner")
+    inputCorner.CornerRadius = UDim.new(0, 4)
+    inputCorner.Parent = input
     
-    local dragging = false
-    
-    local conn1 = sliderBg.InputBegan:Connect(function(input)
-        if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
-            dragging = true
+    local conn = input.FocusLost:Connect(function(enterPressed)
+        local val = tonumber(input.Text)
+        if val then
+            if not isFloat then val = math.floor(val) end
+            val = math.clamp(val, min, max)
+            ESP_Settings[settingKey] = val
         end
+        input.Text = tostring(ESP_Settings[settingKey])
     end)
-    
-    local conn2 = UserInputService.InputEnded:Connect(function(input)
-        if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
-            dragging = false
-        end
-    end)
-    
-    local conn3 = UserInputService.InputChanged:Connect(function(input)
-        if dragging and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
-            local sliderPos = sliderBg.AbsolutePosition.X
-            local sliderSize = sliderBg.AbsoluteSize.X
-            local mousePos = input.Position.X
-            local pct = math.clamp((mousePos - sliderPos) / sliderSize, 0, 1)
-            
-            local value = min + (max - min) * pct
-            if not isFloat then 
-                value = math.floor(value) 
-            else 
-                value = math.floor(value * 100) / 100 
-            end
-            
-            ESP_Settings[settingKey] = value
-            title.Text = name .. ": " .. tostring(value)
-            fill.Size = UDim2.new(pct, 0, 1, 0)
-        end
-    end)
-    
-    table.insert(_G.PlayerESP_Connections, conn1)
-    table.insert(_G.PlayerESP_Connections, conn2)
-    table.insert(_G.PlayerESP_Connections, conn3)
+    table.insert(_G.PlayerESP_Connections, conn)
 end
 
--- Добавляем элементы в меню
 createToggle("Master Switch", "Enabled")
 createToggle("Team Check", "TeamCheck")
 createToggle("CModel Mode", "CModelMode")
@@ -271,60 +240,43 @@ createToggle("Show Boxes", "Box")
 createToggle("Name & Distance", "NameInfo")
 createToggle("Health Bar", "HealthBar")
 createToggle("Chams", "Chams")
-createSlider("Chams Fill %", "ChamsFillAlpha", 0, 1, true)
-createSlider("Chams Outline %", "ChamsOutlineAlpha", 0, 1, true)
+createInputField("Chams Fill %", "ChamsFillAlpha", 0, 1, true)
+createInputField("Chams Outline %", "ChamsOutlineAlpha", 0, 1, true)
 createToggle("Tracers", "Tracers")
-createSlider("Tracer Thickness", "TracerThickness", 1, 5, false)
-createSlider("Tracer Transparency", "TracerTransparency", 0, 1, true)
+createInputField("Tracer Thickness", "TracerThickness", 1, 10, false)
+createInputField("Tracer Visib %", "TracerTransparency", 0, 1, true)
 
--- === ФУНКЦИЯ ПОЛНОГО ОТКЛЮЧЕНИЯ (Kill Script) ===
+-- === ФУНКЦИЯ ПОЛНОГО ОТКЛЮЧЕНИЯ ===
 local function killScript()
     ESP_Settings.Enabled = false
-    
     if _G.PlayerESP_Drawings then
-        for _, draw in ipairs(_G.PlayerESP_Drawings) do
-            pcall(function() draw:Remove() end)
-        end
+        for _, draw in ipairs(_G.PlayerESP_Drawings) do pcall(function() draw:Remove() end) end
     end
-    
     if _G.PlayerESP_Highlights then
-        for _, hl in ipairs(_G.PlayerESP_Highlights) do
-            pcall(function() hl:Destroy() end)
-        end
+        for _, hl in ipairs(_G.PlayerESP_Highlights) do pcall(function() hl:Destroy() end) end
     end
-    
     if _G.PlayerESP_Connections then
-        for _, conn in pairs(_G.PlayerESP_Connections) do
-            pcall(function() conn:Disconnect() end)
-        end
+        for _, conn in pairs(_G.PlayerESP_Connections) do pcall(function() conn:Disconnect() end) end
     end
-    
-    if ESP_GUI then
-        ESP_GUI:Destroy()
-    end
+    if ESP_GUI then ESP_GUI:Destroy() end
 end
 
 local killBtn = Instance.new("TextButton")
 killBtn.Parent = Container
 killBtn.BackgroundColor3 = Color3.fromRGB(120, 25, 25)
 killBtn.BorderSizePixel = 0
-killBtn.Size = UDim2.new(1, -5, 0, 33)
+killBtn.Size = UDim2.new(1, -5, 0, 31)
 killBtn.Font = Enum.Font.GothamBold
 killBtn.Text = "  Kill Script"
 killBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
 killBtn.TextSize = 12.000
 killBtn.TextXAlignment = Enum.TextXAlignment.Left
-
 local kCorner = Instance.new("UICorner")
 kCorner.CornerRadius = UDim.new(0, 6)
 kCorner.Parent = killBtn
-
-local killConn = killBtn.MouseButton1Click:Connect(function()
-    killScript()
-end)
+local killConn = killBtn.MouseButton1Click:Connect(function() killScript() end)
 table.insert(_G.PlayerESP_Connections, killConn)
 
--- Пустое место в конце скролла
 local Spacer = Instance.new("Frame")
 Spacer.Parent = Container
 Spacer.BackgroundTransparency = 1
@@ -359,29 +311,32 @@ local function isTeammateCheck(player, character)
             if charAttr and localAttr and charAttr == localAttr then return true end
         end
     end
-    
     for _, attrName in ipairs({"Team", "Clan", "Faction"}) do
         local pAttr = player:GetAttribute(attrName)
         local lAttr = localPlayer:GetAttribute(attrName)
         if pAttr and lAttr and pAttr == lAttr then return true end
     end
-    
     return false
 end
 
--- Функция проверки видимости (WallCheck)
+-- Обновленный Ray-WallCheck через Ray
 local function checkVisibility(targetPart, targetCharacter)
     if not targetPart or not targetCharacter then return false end
+    
     local origin = camera.CFrame.Position
     local direction = (targetPart.Position - origin)
     
-    local params = RaycastParams.new()
-    params.FilterType = Enum.RaycastFilterType.Exclude
-    params.FilterDescendantsInstances = {camera, localPlayer.Character, targetCharacter}
-    params.IgnoreWater = true
+    -- Создаем луч
+    local ray = Ray.new(origin, direction)
     
-    local result = workspace:Raycast(origin, direction, params)
-    return result == nil -- Если ничего не пересекли, значит видим
+    -- Список игнорирования (камера, локальный персонаж и целевой персонаж)
+    local ignoreList = {camera, localPlayer.Character, targetCharacter}
+    
+    -- Выполняем поиск препятствий
+    local hitPart, hitPosition = workspace:FindPartOnRayWithIgnoreList(ray, ignoreList, true, true)
+    
+    -- Если луч ни обо что не ударился, значит противник не за стеной
+    return hitPart == nil
 end
 
 local function createESP(player)
@@ -424,15 +379,11 @@ local function createESP(player)
 end
 
 for _, player in ipairs(Players:GetPlayers()) do
-    if player ~= localPlayer then
-        ESP_List[player] = createESP(player)
-    end
+    if player ~= localPlayer then ESP_List[player] = createESP(player) end
 end
 
 local addedConn = Players.PlayerAdded:Connect(function(player)
-    if player ~= localPlayer then
-        ESP_List[player] = createESP(player)
-    end
+    if player ~= localPlayer then ESP_List[player] = createESP(player) end
 end)
 table.insert(_G.PlayerESP_Connections, addedConn)
 
@@ -447,11 +398,7 @@ table.insert(_G.PlayerESP_Connections, removedConn)
 local function getPlayersArray()
     local arr = {}
     for p, data in pairs(ESP_List) do
-        if p and p.Parent then
-            table.insert(arr, p)
-        else
-            ESP_List[p] = nil
-        end
+        if p and p.Parent then table.insert(arr, p) else ESP_List[p] = nil end
     end
     return arr
 end
@@ -470,9 +417,7 @@ local renderConn = RunService.RenderStepped:Connect(function(deltaTime)
             currentIndex = (currentIndex % #playersArr) + 1
             local targetPlayer = playersArr[currentIndex]
             local data = ESP_List[targetPlayer]
-            if targetPlayer and data then
-                data.IsTeammate = isTeammateCheck(targetPlayer, targetPlayer.Character)
-            end
+            if targetPlayer and data then data.IsTeammate = isTeammateCheck(targetPlayer, targetPlayer.Character) end
         end
     end
 
@@ -506,9 +451,7 @@ local renderConn = RunService.RenderStepped:Connect(function(deltaTime)
             end
         end
 
-        if hum and hum.Health <= 0 then
-            shouldShow = false
-        end
+        if hum and hum.Health <= 0 then shouldShow = false end
 
         local vector, onScreen = nil, false
         if shouldShow and rootPos then
@@ -525,20 +468,22 @@ local renderConn = RunService.RenderStepped:Connect(function(deltaTime)
         end
 
         if data.FadeAlpha > 0.01 then
-            
-            -- Проверка WallCheck и назначение цветов
             local isVisible = false
             if ESP_Settings.WallCheck and targetPart then
                 isVisible = checkVisibility(targetPart, character)
             end
 
+            -- Логика цветов WallCheck
             local activeBoxColor = Color3.fromRGB(255, 255, 255)
             local activeChamsColor = Color3.fromRGB(255, 50, 50)
 
             if ESP_Settings.WallCheck then
                 if isVisible then
-                    activeBoxColor = Color3.fromRGB(255, 50, 50) -- Красный Box, если видим
-                    activeChamsColor = Color3.fromRGB(50, 100, 255) -- Синий Chams, если видим
+                    activeBoxColor = Color3.fromRGB(255, 50, 50) -- Если НЕ за стеной: Box Красный
+                    activeChamsColor = Color3.fromRGB(50, 100, 255) -- Если НЕ за стеной: Chams Синий
+                else
+                    activeBoxColor = Color3.fromRGB(255, 255, 255) -- Если за стеной: Box стандартный
+                    activeChamsColor = Color3.fromRGB(255, 50, 50) -- Если за стеной: Chams стандартный
                 end
             end
 
@@ -561,7 +506,6 @@ local renderConn = RunService.RenderStepped:Connect(function(deltaTime)
 
             local headScreen = camera:WorldToViewportPoint(headPos)
             local legScreen = camera:WorldToViewportPoint(legPos)
-
             local height = math.abs(headScreen.Y - legScreen.Y)
             local width = height / 2
 
@@ -589,11 +533,9 @@ local renderConn = RunService.RenderStepped:Connect(function(deltaTime)
 
                 data.HealthBarBG.Size = Vector2.new(2, height)
                 data.HealthBarBG.Position = Vector2.new(vector.X - width / 2 - 5, vector.Y - height / 2)
-
                 data.HealthBar.Size = Vector2.new(2, height * healthPct)
                 data.HealthBar.Position = Vector2.new(vector.X - width / 2 - 5, (vector.Y - height / 2) + (height - (height * healthPct)))
                 data.HealthBar.Color = Color3.fromHSV(healthPct * 0.3, 1, 1)
-
                 data.HealthBarBG.Visible = true
                 data.HealthBar.Visible = true
             else
