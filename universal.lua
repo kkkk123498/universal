@@ -43,7 +43,7 @@ local ESP_Settings = {
 
 local ESP_List = {}
 
--- === ИНТЕРФЕЙС ===
+-- === УЛУЧШЕННЫЙ ИНТЕРФЕЙС ===
 local ESP_GUI = Instance.new("ScreenGui")
 ESP_GUI.Name = "PlayerESP_UI"
 if syn and syn.protect_gui then
@@ -55,65 +55,86 @@ else
 end
 ESP_GUI.ResetOnSpawn = false
 
-local MainFrame = Instance.new("ImageLabel")
+-- Главный контейнер (с закруглением и приятным градиентом)
+local MainFrame = Instance.new("Frame")
 MainFrame.Parent = ESP_GUI
-MainFrame.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
-MainFrame.BackgroundTransparency = 1.000
+MainFrame.BackgroundColor3 = Color3.fromRGB(18, 18, 22)
 MainFrame.Position = UDim2.new(0.6, 0, 0.3, 0)
-MainFrame.Size = UDim2.new(0, 210, 0, 365) -- Увеличил высоту под новую кнопку
-MainFrame.Image = "rbxassetid://3570695787"
-MainFrame.ImageColor3 = Color3.fromRGB(22, 22, 22)
-MainFrame.ScaleType = Enum.ScaleType.Slice
-MainFrame.SliceCenter = Rect.new(100, 100, 100, 100)
-MainFrame.SliceScale = 0.120
+MainFrame.Size = UDim2.new(0, 220, 0, 390)
+MainFrame.BorderSizePixel = 0
 
--- Тень или акцентная шапка
-local HeaderAccent = Instance.new("Frame")
-HeaderAccent.Parent = MainFrame
-HeaderAccent.BackgroundColor3 = Color3.fromRGB(0, 170, 255)
-HeaderAccent.BorderSizePixel = 0
-HeaderAccent.Position = UDim2.new(0, 0, 0, 0)
-HeaderAccent.Size = UDim2.new(1, 0, 0, 3)
+local MainCorner = Instance.new("UICorner")
+MainCorner.CornerRadius = UDim.new(0, 10)
+MainCorner.Parent = MainFrame
+
+-- Обводка главного окна для стиля
+local MainStroke = Instance.new("UIStroke")
+MainStroke.Parent = MainFrame
+MainStroke.Color = Color3.fromRGB(45, 45, 55)
+MainStroke.Thickness = 1.5
+
+-- Шапка
+local Header = Instance.new("Frame")
+Header.Parent = MainFrame
+Header.BackgroundColor3 = Color3.fromRGB(25, 25, 32)
+Header.Size = UDim2.new(1, 0, 0, 42)
+Header.BorderSizePixel = 0
+
+local HeaderCorner = Instance.new("UICorner")
+HeaderCorner.CornerRadius = UDim.new(0, 10)
+HeaderCorner.Parent = Header
+
+-- Скрываем острые углы снизу шапки
+local HeaderFix = Instance.new("Frame")
+HeaderFix.Parent = Header
+HeaderFix.BackgroundColor3 = Color3.fromRGB(25, 25, 32)
+HeaderFix.Position = UDim2.new(0, 0, 0.7, 0)
+HeaderFix.Size = UDim2.new(1, 0, 0.3, 0)
+HeaderFix.BorderSizePixel = 0
 
 local Title = Instance.new("TextLabel")
-Title.Parent = MainFrame
+Title.Parent = Header
 Title.BackgroundTransparency = 1.000
-Title.Size = UDim2.new(1, 0, 0, 38)
+Title.Position = UDim2.new(0, 14, 0, 0)
+Title.Size = UDim2.new(0.6, 0, 1, 0)
 Title.Font = Enum.Font.GothamBold
-Title.Text = "  PLAYER ESP"
-Title.TextColor3 = Color3.fromRGB(240, 240, 240)
+Title.Text = "PLAYER ESP"
+Title.TextColor3 = Color3.fromRGB(255, 255, 255)
 Title.TextSize = 13.000
 Title.TextXAlignment = Enum.TextXAlignment.Left
 
--- Индикатор хоткея в заголовке
 local HintLabel = Instance.new("TextLabel")
-HintLabel.Parent = MainFrame
+HintLabel.Parent = Header
 HintLabel.BackgroundTransparency = 1.000
-HintLabel.Position = UDim2.new(-0.05, 0, 0, 0)
-HintLabel.Size = UDim2.new(1, 0, 0, 38)
-HintLabel.Font = Enum.Font.Gotham
+HintLabel.Position = UDim2.new(0.4, 0, 0, 0)
+HintLabel.Size = UDim2.new(0.53, 0, 1, 0)
+HintLabel.Font = Enum.Font.GothamMedium
 HintLabel.Text = "[RightAlt]"
-HintLabel.TextColor3 = Color3.fromRGB(90, 90, 90)
+HintLabel.TextColor3 = Color3.fromRGB(110, 110, 130)
 HintLabel.TextSize = 10.000
 HintLabel.TextXAlignment = Enum.TextXAlignment.Right
 
-local Container = Instance.new("Frame")
+-- Контейнер элементов
+local Container = Instance.new("ScrollingFrame")
 Container.Parent = MainFrame
-Container.BackgroundTransparency = 1
-Container.Position = UDim2.new(0.05, 0, 0.12, 0)
-Container.Size = UDim2.new(0.9, 0, 0.86, 0)
+Container.BackgroundTransparency = 1.000
+Container.Position = UDim2.new(0, 10, 0, 52)
+Container.Size = UDim2.new(1, -20, 1, -62)
+Container.CanvasSize = UDim2.new(0, 0, 0, 325)
+Container.ScrollBarThickness = 3
+Container.ScrollBarImageColor3 = Color3.fromRGB(60, 60, 75)
 
 local UIListLayout = Instance.new("UIListLayout")
 UIListLayout.Parent = Container
 UIListLayout.SortOrder = Enum.SortOrder.LayoutOrder
 UIListLayout.Padding = UDim.new(0, 6)
 
--- Драг интерфейса
-local function drag(GuiObj)
+-- Драг интерфейса по шапке
+local function drag(GuiObj, DragTarget)
 	local dragToggle, dragInput, dragStart, startPos
 	GuiObj.InputBegan:Connect(function(input)
 		if (input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch) then
-			dragToggle = true; dragStart = input.Position; startPos = GuiObj.Position
+			dragToggle = true; dragStart = input.Position; startPos = DragTarget.Position
 			input.Changed:Connect(function() if input.UserInputState == Enum.UserInputState.End then dragToggle = false end end)
 		end
 	end)
@@ -123,21 +144,21 @@ local function drag(GuiObj)
 	UserInputService.InputChanged:Connect(function(input)
 		if input == dragInput and dragToggle then 
             local Delta = input.Position - dragStart
-		    GuiObj.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + Delta.X, startPos.Y.Scale, startPos.Y.Offset + Delta.Y)
+		    DragTarget.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + Delta.X, startPos.Y.Scale, startPos.Y.Offset + Delta.Y)
         end
 	end)
 end
-drag(MainFrame)
+drag(Header, MainFrame)
 
 local function createToggle(name, settingKey)
     local btn = Instance.new("TextButton")
     btn.Parent = Container
-    btn.BackgroundColor3 = Color3.fromRGB(32, 32, 32)
+    btn.BackgroundColor3 = Color3.fromRGB(26, 26, 34)
     btn.BorderSizePixel = 0
-    btn.Size = UDim2.new(1, 0, 0, 31)
+    btn.Size = UDim2.new(1, 0, 0, 32)
     btn.Font = Enum.Font.GothamMedium
-    btn.Text = "  " .. name
-    btn.TextColor3 = Color3.fromRGB(210, 210, 210)
+    btn.Text = "    " .. name
+    btn.TextColor3 = Color3.fromRGB(220, 220, 230)
     btn.TextSize = 11.5
     btn.TextXAlignment = Enum.TextXAlignment.Left
 
@@ -147,16 +168,16 @@ local function createToggle(name, settingKey)
 
     local status = Instance.new("Frame")
     status.Parent = btn
-    status.BackgroundColor3 = ESP_Settings[settingKey] and Color3.fromRGB(0, 200, 100) or Color3.fromRGB(180, 40, 40)
-    status.Position = UDim2.new(0.84, 0, 0.28, 0)
-    status.Size = UDim2.new(0, 13, 0, 13)
+    status.BackgroundColor3 = ESP_Settings[settingKey] and Color3.fromRGB(0, 210, 110) or Color3.fromRGB(210, 45, 45)
+    status.Position = UDim2.new(0.82, 0, 0.28, 0)
+    status.Size = UDim2.new(0, 14, 0, 14)
     local scorr = Instance.new("UICorner")
     scorr.CornerRadius = UDim.new(1, 0)
     scorr.Parent = status
 
     btn.MouseButton1Click:Connect(function()
         ESP_Settings[settingKey] = not ESP_Settings[settingKey]
-        status.BackgroundColor3 = ESP_Settings[settingKey] and Color3.fromRGB(0, 200, 100) or Color3.fromRGB(180, 40, 40)
+        status.BackgroundColor3 = ESP_Settings[settingKey] and Color3.fromRGB(0, 210, 110) or Color3.fromRGB(210, 45, 45)
     end)
 end
 
@@ -168,45 +189,43 @@ createToggle("Name & Distance", "NameInfo")
 createToggle("Health Bar", "HealthBar")
 createToggle("Chams", "Chams")
 
+-- Разделитель перед Kill Script
+local Divider = Instance.new("Frame")
+Divider.Parent = Container
+Divider.BackgroundColor3 = Color3.fromRGB(38, 38, 48)
+Divider.Size = UDim2.new(1, 0, 0, 1)
+Divider.BorderSizePixel = 0
+
 -- === ФУНКЦИЯ ПОЛНОГО ОТКЛЮЧЕНИЯ (Kill Script) ===
 local function killScript()
     ESP_Settings.Enabled = false
-    
-    -- Очищаем все рисунки (Drawings)
     if _G.PlayerESP_Drawings then
         for _, draw in ipairs(_G.PlayerESP_Drawings) do
             pcall(function() draw:Remove() end)
         end
     end
-    
-    -- Удаляем подсветки (Highlights/Chams)
     if _G.PlayerESP_Highlights then
         for _, hl in ipairs(_G.PlayerESP_Highlights) do
             pcall(function() hl:Destroy() end)
         end
     end
-    
-    -- Отключаем все хуки и события
     if _G.PlayerESP_Connections then
         for _, conn in pairs(_G.PlayerESP_Connections) do
             pcall(function() conn:Disconnect() end)
         end
     end
-    
-    -- Уничтожаем интерфейс
     if ESP_GUI then
         ESP_GUI:Destroy()
     end
 end
 
--- Кнопка Kill Script в самом низу
 local killBtn = Instance.new("TextButton")
 killBtn.Parent = Container
-killBtn.BackgroundColor3 = Color3.fromRGB(120, 25, 25)
+killBtn.BackgroundColor3 = Color3.fromRGB(160, 35, 35)
 killBtn.BorderSizePixel = 0
-killBtn.Size = UDim2.new(1, 0, 0, 33)
+killBtn.Size = UDim2.new(1, 0, 0, 34)
 killBtn.Font = Enum.Font.GothamBold
-killBtn.Text = "  Kill Script"
+killBtn.Text = "    Kill Script"
 killBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
 killBtn.TextSize = 12.000
 killBtn.TextXAlignment = Enum.TextXAlignment.Left
