@@ -41,7 +41,7 @@ local ESP_Settings = {
     WallCheck = false,
     Tracers = false,
     TracerThickness = 1,
-    TracerTransparency = 1,
+    TracerTransparency = 0.2, -- Дефолтное значение прозрачности из нового скрипта
     ChamsFillAlpha = 0.5,
     ChamsOutlineAlpha = 0.2,
     FadeSpeed = 2.5
@@ -74,12 +74,12 @@ MainFrame.SliceCenter = Rect.new(100, 100, 100, 100)
 MainFrame.SliceScale = 0.120
 MainFrame.Active = true
 
-local HeaderAccent = Instance.new("Frame")
-HeaderAccent.Parent = MainFrame
-HeaderAccent.BackgroundColor3 = Color3.fromRGB(0, 170, 255)
-HeaderAccent.BorderSizePixel = 0
-HeaderAccent.Position = UDim2.new(0, 0, 0, 0)
-HeaderAccent.Size = UDim2.new(1, 0, 0, 3)
+-- Голубой аутлайн (UIStroke) для всей менюшки вместо верхней полоски
+local MainOutline = Instance.new("UIStroke")
+MainOutline.Parent = MainFrame
+MainOutline.Color = Color3.fromRGB(0, 170, 255)
+MainOutline.Thickness = 1.5
+MainOutline.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
 
 local Title = Instance.new("TextLabel")
 Title.Parent = MainFrame
@@ -102,7 +102,7 @@ HintLabel.TextColor3 = Color3.fromRGB(90, 90, 90)
 HintLabel.TextSize = 10.000
 HintLabel.TextXAlignment = Enum.TextXAlignment.Right
 
--- Скроллинг контейнер, сливающийся боками
+-- Скроллинг контейнер
 local Container = Instance.new("ScrollingFrame")
 Container.Parent = MainFrame
 Container.BackgroundTransparency = 1
@@ -181,7 +181,6 @@ local function createToggle(name, settingKey)
     table.insert(_G.PlayerESP_Connections, conn)
 end
 
--- Поля ввода вместо ползунков
 local function createInputField(name, settingKey, min, max, isFloat)
     local frame = Instance.new("Frame")
     frame.Parent = Container
@@ -244,7 +243,7 @@ createInputField("Chams Fill %", "ChamsFillAlpha", 0, 1, true)
 createInputField("Chams Outline %", "ChamsOutlineAlpha", 0, 1, true)
 createToggle("Tracers", "Tracers")
 createInputField("Tracer Thickness", "TracerThickness", 1, 10, false)
-createInputField("Tracer Visib %", "TracerTransparency", 0, 1, true)
+createInputField("Tracer Transp %", "TracerTransparency", 0, 1, true)
 
 -- === ФУНКЦИЯ ПОЛНОГО ОТКЛЮЧЕНИЯ ===
 local function killScript()
@@ -319,24 +318,30 @@ local function isTeammateCheck(player, character)
     return false
 end
 
--- Обновленный Ray-WallCheck через Ray
+local function getTeamColor(player)
+	if player.Team then return player.Team.TeamColor.Color end
+	return Color3.new(1, 1, 1)
+end
+
+-- Обновленный Ray-WallCheck (Извлечено из coldwar.txt с использованием workspace:Raycast)
 local function checkVisibility(targetPart, targetCharacter)
     if not targetPart or not targetCharacter then return false end
     
     local origin = camera.CFrame.Position
     local direction = (targetPart.Position - origin)
     
-    -- Создаем луч
-    local ray = Ray.new(origin, direction)
+    local raycastParams = RaycastParams.new()
+    raycastParams.FilterType = Enum.RaycastFilterType.Exclude
+    local excludeList = {localPlayer.Character, targetCharacter}
+    raycastParams.FilterDescendantsInstances = excludeList
     
-    -- Список игнорирования (камера, локальный персонаж и целевой персонаж)
-    local ignoreList = {camera, localPlayer.Character, targetCharacter}
+    local result = workspace:Raycast(origin, direction, raycastParams)
     
-    -- Выполняем поиск препятствий
-    local hitPart, hitPosition = workspace:FindPartOnRayWithIgnoreList(ray, ignoreList, true, true)
-    
-    -- Если луч ни обо что не ударился, значит противник не за стеной
-    return hitPart == nil
+    -- Если луч ни обо что не ударился или попал в часть целевого персонажа, то цель видна
+    if not result or result.Instance:IsDescendantOf(targetCharacter) then
+        return true
+    end
+    return false
 end
 
 local function createESP(player)
@@ -349,7 +354,7 @@ local function createESP(player)
         NameText = Drawing.new("Text"),
         HealthBarBG = Drawing.new("Square"),
         HealthBar = Drawing.new("Square"),
-        Tracer = Drawing.new("Line"),
+        Tracer = Drawing.new("Line"), -- Трасер из coldwar.txt
         Chams = Instance.new("Highlight")
     }
 
@@ -365,7 +370,11 @@ local function createESP(player)
     data.HealthBar.Visible = false; data.HealthBar.Color = Color3.fromRGB(0, 255, 0); data.HealthBar.Thickness = 1; data.HealthBar.Filled = true; data.HealthBar.Transparency = 0
     table.insert(_G.PlayerESP_Drawings, data.HealthBar)
 
-    data.Tracer.Visible = false; data.Tracer.Color = Color3.fromRGB(255, 255, 255); data.Tracer.Thickness = 1; data.Tracer.Transparency = 0
+    -- Инициализация трасера согласно логике из coldwar.txt
+    data.Tracer.Visible = false
+    data.Tracer.Thickness = ESP_Settings.TracerThickness
+    data.Tracer.Transparency = ESP_Settings.TracerTransparency
+    data.Tracer.Color = Color3.new(1, 1, 1)
     table.insert(_G.PlayerESP_Drawings, data.Tracer)
 
     data.Chams.Name = "Chams_" .. player.Name
@@ -421,6 +430,9 @@ local renderConn = RunService.RenderStepped:Connect(function(deltaTime)
         end
     end
 
+    local viewportSize = camera.ViewportSize
+    local screenCenter = Vector2.new(viewportSize.X / 2, viewportSize.Y / 2)
+
     for player, data in pairs(ESP_List) do
         local character = player.Character
         local isTeammate = data.IsTeammate or false
@@ -468,22 +480,22 @@ local renderConn = RunService.RenderStepped:Connect(function(deltaTime)
         end
 
         if data.FadeAlpha > 0.01 then
-            local isVisible = false
+            local isVisible = true
             if ESP_Settings.WallCheck and targetPart then
                 isVisible = checkVisibility(targetPart, character)
             end
 
-            -- Логика цветов WallCheck
+            -- Логика динамического окрашивания
             local activeBoxColor = Color3.fromRGB(255, 255, 255)
             local activeChamsColor = Color3.fromRGB(255, 50, 50)
 
             if ESP_Settings.WallCheck then
                 if isVisible then
-                    activeBoxColor = Color3.fromRGB(255, 50, 50) -- Если НЕ за стеной: Box Красный
-                    activeChamsColor = Color3.fromRGB(50, 100, 255) -- Если НЕ за стеной: Chams Синий
+                    activeBoxColor = Color3.fromRGB(255, 50, 50) -- Виден: Красный Box
+                    activeChamsColor = Color3.fromRGB(50, 100, 255) -- Виден: Синие Chams
                 else
-                    activeBoxColor = Color3.fromRGB(255, 255, 255) -- Если за стеной: Box стандартный
-                    activeChamsColor = Color3.fromRGB(255, 50, 50) -- Если за стеной: Chams стандартный
+                    activeBoxColor = Color3.fromRGB(255, 255, 255)
+                    activeChamsColor = Color3.fromRGB(255, 50, 50)
                 end
             end
 
@@ -543,12 +555,13 @@ local renderConn = RunService.RenderStepped:Connect(function(deltaTime)
                 data.HealthBar.Visible = false
             end
 
+            -- Полная интеграция логики трасеров из coldwar.txt
             if ESP_Settings.Tracers and onScreen then
-                data.Tracer.From = Vector2.new(camera.ViewportSize.X / 2, camera.ViewportSize.Y)
-                data.Tracer.To = Vector2.new(vector.X, legScreen.Y)
+                data.Tracer.From = screenCenter -- Направление из центра экрана
+                data.Tracer.To = Vector2.new(vector.X, vector.Y) -- До HumanoidRootPart цели
+                data.Tracer.Color = getTeamColor(player) -- Цвет команды
                 data.Tracer.Thickness = ESP_Settings.TracerThickness
-                data.Tracer.Transparency = (1 - ESP_Settings.TracerTransparency) * data.FadeAlpha
-                data.Tracer.Color = activeBoxColor
+                data.Tracer.Transparency = ESP_Settings.TracerTransparency * data.FadeAlpha
                 data.Tracer.Visible = true
             else
                 data.Tracer.Visible = false
