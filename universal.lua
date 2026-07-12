@@ -38,11 +38,11 @@ local ESP_Settings = {
     WallCheck = false,
     Tracers = false,
     TracerThickness = 1,
-    TracerTransparency = 0.8,
+    TracerTransparency = 1,
     NameInfo = true,
     HealthBar = true,
     Chams = false,
-    ChamsTransparency = 0.8,
+    ChamsTransparency = 0.5,
     FadeSpeed = 2.5
 }
 
@@ -99,8 +99,8 @@ Title.BackgroundTransparency = 1.000
 Title.Position = UDim2.new(0, 14, 0, 0)
 Title.Size = UDim2.new(0.6, 0, 1, 0)
 Title.Font = Enum.Font.GothamBold
-Title.Text = "NEXUS ESP"
-Title.TextColor3 = Color3.fromRGB(255, 255, 255)
+Title.Text = "АНИГИЛЯТОР-3000"
+Title.TextColor3 = Color3.fromRGB(255, 60, 60)
 Title.TextSize = 13.000
 Title.TextXAlignment = Enum.TextXAlignment.Left
 
@@ -110,7 +110,7 @@ HintLabel.BackgroundTransparency = 1.000
 HintLabel.Position = UDim2.new(0.4, 0, 0, 0)
 HintLabel.Size = UDim2.new(0.53, 0, 1, 0)
 HintLabel.Font = Enum.Font.GothamMedium
-HintLabel.Text = "[ RightAlt ]"
+HintLabel.Text = "[RightAlt]"
 HintLabel.TextColor3 = Color3.fromRGB(110, 110, 130)
 HintLabel.TextSize = 10.000
 HintLabel.TextXAlignment = Enum.TextXAlignment.Right
@@ -119,16 +119,11 @@ local Container = Instance.new("ScrollingFrame")
 Container.Parent = MainFrame
 Container.BackgroundTransparency = 1.000
 Container.Position = UDim2.new(0, 10, 0, 52)
-Container.Size = UDim2.new(1, -10, 1, -62)
+Container.Size = UDim2.new(1, -15, 1, -62)
 Container.CanvasSize = UDim2.new(0, 0, 0, 480)
 Container.ScrollBarThickness = 4
-Container.ScrollBarImageColor3 = Color3.fromRGB(60, 60, 75)
-Container.BorderSizePixel = 0
-
--- Фикс: чтобы элементы не прилипали к скроллбару
-local UIPadding = Instance.new("UIPadding")
-UIPadding.Parent = Container
-UIPadding.PaddingRight = UDim.new(0, 12)
+Container.ScrollBarImageColor3 = Color3.fromRGB(35, 35, 45)
+Container.VerticalScrollBarInset = Enum.ScrollBarInset.ScrollBar
 
 local UIListLayout = Instance.new("UIListLayout")
 UIListLayout.Parent = Container
@@ -158,15 +153,14 @@ drag(Header, MainFrame)
 local function createToggle(name, settingKey)
     local btn = Instance.new("TextButton")
     btn.Parent = Container
-    btn.BackgroundColor3 = Color3.fromRGB(26, 26, 34)
+    btn.BackgroundColor3 = Color3.fromRGB(24, 24, 30)
     btn.BorderSizePixel = 0
-    btn.Size = UDim2.new(1, 0, 0, 32)
+    btn.Size = UDim2.new(1, -4, 0, 30)
     btn.Font = Enum.Font.GothamMedium
     btn.Text = "    " .. name
     btn.TextColor3 = Color3.fromRGB(220, 220, 230)
     btn.TextSize = 11.0
     btn.TextXAlignment = Enum.TextXAlignment.Left
-    btn.AutoButtonColor = false
 
     local corner = Instance.new("UICorner")
     corner.CornerRadius = UDim.new(0, 6)
@@ -175,7 +169,7 @@ local function createToggle(name, settingKey)
     local status = Instance.new("Frame")
     status.Parent = btn
     status.BackgroundColor3 = ESP_Settings[settingKey] and Color3.fromRGB(0, 210, 110) or Color3.fromRGB(210, 45, 45)
-    status.Position = UDim2.new(1, -24, 0.5, -7)
+    status.Position = UDim2.new(0.85, 0, 0.28, 0)
     status.Size = UDim2.new(0, 14, 0, 14)
     local scorr = Instance.new("UICorner")
     scorr.CornerRadius = UDim.new(1, 0)
@@ -191,7 +185,7 @@ local function createSlider(name, settingKey, min, max, isFloat)
     local lbl = Instance.new("TextLabel")
     lbl.Parent = Container
     lbl.BackgroundTransparency = 1
-    lbl.Size = UDim2.new(1, 0, 0, 40)
+    lbl.Size = UDim2.new(1, -4, 0, 38)
     lbl.Font = Enum.Font.GothamMedium
     lbl.Text = "    " .. name .. ": " .. tostring(ESP_Settings[settingKey])
     lbl.TextColor3 = Color3.fromRGB(180, 180, 195)
@@ -200,33 +194,33 @@ local function createSlider(name, settingKey, min, max, isFloat)
 
     local bg = Instance.new("Frame")
     bg.Parent = lbl
-    bg.BackgroundColor3 = Color3.fromRGB(35, 35, 45)
-    bg.Position = UDim2.new(0.04, 0, 0.65, 0)
-    bg.Size = UDim2.new(0.92, 0, 0, 8)
+    bg.BackgroundColor3 = Color3.fromRGB(30, 30, 40)
+    bg.Position = UDim2.new(0.04, 0, 0.72, 0)
+    bg.Size = UDim2.new(0.92, 0, 0, 6)
     bg.BorderSizePixel = 0
     local bgc = Instance.new("UICorner")
     bgc.CornerRadius = UDim.new(1, 0); bgc.Parent = bg
 
     local fill = Instance.new("Frame")
     fill.Parent = bg
-    fill.BackgroundColor3 = Color3.fromRGB(80, 140, 255)
+    fill.BackgroundColor3 = Color3.fromRGB(255, 60, 60)
     fill.Size = UDim2.new((ESP_Settings[settingKey] - min) / (max - min), 0, 1, 0)
     fill.BorderSizePixel = 0
     local fc = Instance.new("UICorner")
     fc.CornerRadius = UDim.new(1, 0); fc.Parent = fill
 
     local dragging = false
-
+    
     local function updateSlider(input)
         local pos = math.clamp((input.Position.X - bg.AbsolutePosition.X) / bg.AbsoluteSize.X, 0, 1)
         local val = min + (max - min) * pos
         if not isFloat then 
             val = math.floor(val + 0.5) 
         else 
-            val = math.floor(val * 10 + 0.5) / 10 
+            val = math.round(val * 100) / 100
         end
         ESP_Settings[settingKey] = val
-        fill.Size = UDim2.new((val - min) / (max - min), 0, 1, 0) -- Плавно и без задержек
+        fill.Size = UDim2.new((val - min) / (max - min), 0, 1, 0)
         lbl.Text = "    " .. name .. ": " .. tostring(val)
     end
 
@@ -236,13 +230,13 @@ local function createSlider(name, settingKey, min, max, isFloat)
             updateSlider(input)
         end
     end)
-
+    
     UserInputService.InputEnded:Connect(function(input)
         if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
             dragging = false
         end
     end)
-
+    
     UserInputService.InputChanged:Connect(function(input)
         if dragging and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
             updateSlider(input)
@@ -256,7 +250,7 @@ createToggle("CModel Mode", "CModelMode")
 createToggle("Show Boxes", "Box")
 createToggle("Wall Check", "WallCheck")
 createToggle("Tracers", "Tracers")
-createSlider("Tracer Thickness", "TracerThickness", 1, 5, false)
+createSlider("Tracer Thickness", "TracerThickness", 1, 5, true)
 createSlider("Tracer Alpha", "TracerTransparency", 0.1, 1, true)
 createToggle("Name & Distance", "NameInfo")
 createToggle("Health Bar", "HealthBar")
@@ -266,7 +260,7 @@ createSlider("Chams Alpha", "ChamsTransparency", 0.1, 1, true)
 local Divider = Instance.new("Frame")
 Divider.Parent = Container
 Divider.BackgroundColor3 = Color3.fromRGB(38, 38, 48)
-Divider.Size = UDim2.new(1, 0, 0, 1)
+Divider.Size = UDim2.new(1, -4, 0, 1)
 Divider.BorderSizePixel = 0
 
 local function killScript()
@@ -285,14 +279,14 @@ end
 
 local killBtn = Instance.new("TextButton")
 killBtn.Parent = Container
-killBtn.BackgroundColor3 = Color3.fromRGB(180, 45, 45)
+killBtn.BackgroundColor3 = Color3.fromRGB(160, 35, 35)
 killBtn.BorderSizePixel = 0
-killBtn.Size = UDim2.new(1, 0, 0, 36)
+killBtn.Size = UDim2.new(1, -4, 0, 32)
 killBtn.Font = Enum.Font.GothamBold
-killBtn.Text = "Unload Script"
+killBtn.Text = "    Kill Script"
 killBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-killBtn.TextSize = 12.0
-killBtn.AutoButtonColor = false
+killBtn.TextSize = 11.5
+killBtn.TextXAlignment = Enum.TextXAlignment.Left
 
 local kCorner = Instance.new("UICorner")
 kCorner.CornerRadius = UDim.new(0, 6)
@@ -335,7 +329,6 @@ local function isTeammateCheck(player, character)
     return false
 end
 
--- Функция проверки видимости (WallCheck) через Raycast
 local function isVisible(targetPart)
     if not targetPart then return false end
     local origin = camera.CFrame.Position
@@ -349,7 +342,7 @@ local function isVisible(targetPart)
     raycastParams.IgnoreWater = true
     
     local result = workspace:Raycast(origin, direction, raycastParams)
-    return result == nil 
+    return result == nil
 end
 
 local function createESP(player)
@@ -479,16 +472,22 @@ local renderConn = RunService.RenderStepped:Connect(function(deltaTime)
         end
 
         if data.FadeAlpha > 0.01 then
-            
-            -- Логика WallCheck и Цветов
-            local boxColor = Color3.fromRGB(255, 255, 255)       -- Стандартный цвет Box
-            local chamsFillColor = Color3.fromRGB(255, 50, 50)   -- Стандартный цвет Chams
+            local visible = isVisible(targetPart)
 
+            -- Дефолтные цвета (если WallCheck выключен или игрок ЗА стеной)
+            local boxColor = Color3.fromRGB(255, 255, 255)
+            local chamsFillColor = Color3.fromRGB(255, 50, 50)
+
+            -- Условие Wall Check
             if ESP_Settings.WallCheck then
-                local visible = isVisible(targetPart)
                 if visible then
-                    boxColor = Color3.fromRGB(255, 0, 0)         -- Красный Box, если видно
-                    chamsFillColor = Color3.fromRGB(0, 120, 255) -- Синий Chams, если видно
+                    -- Если НЕ за стеной (виден напрямую)
+                    boxColor = Color3.fromRGB(255, 0, 0)       -- Красный Box
+                    chamsFillColor = Color3.fromRGB(0, 120, 255) -- Синий Chams
+                else
+                    -- Если ЗА стеной (возврат к стандартным цветам)
+                    boxColor = Color3.fromRGB(255, 255, 255)
+                    chamsFillColor = Color3.fromRGB(255, 50, 50)
                 end
             end
 
@@ -524,9 +523,9 @@ local renderConn = RunService.RenderStepped:Connect(function(deltaTime)
             end
 
             if ESP_Settings.Tracers then
-                data.Tracer.From = Vector2.new(camera.ViewportSize.X / 2, camera.ViewportSize.Y) -- Из низа экрана по центру
-                data.Tracer.To = Vector2.new(vector.X, vector.Y + height / 2) -- До ног игрока
-                data.Tracer.Color = boxColor -- Линии будут того же цвета, что и Box
+                data.Tracer.From = Vector2.new(camera.ViewportSize.X / 2, camera.ViewportSize.Y)
+                data.Tracer.To = Vector2.new(vector.X, vector.Y + height / 2)
+                data.Tracer.Color = boxColor
                 data.Tracer.Thickness = ESP_Settings.TracerThickness
                 data.Tracer.Transparency = ESP_Settings.TracerTransparency * data.FadeAlpha
                 data.Tracer.Visible = true
