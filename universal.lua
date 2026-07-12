@@ -41,7 +41,6 @@ local ESP_Settings = {
     FadeSpeed = 2.5
 }
 
--- Таблица для хранения состояния ESP игроков
 local ESP_List = {}
 
 -- === ИНТЕРФЕЙС ===
@@ -58,35 +57,56 @@ ESP_GUI.ResetOnSpawn = false
 
 local MainFrame = Instance.new("ImageLabel")
 MainFrame.Parent = ESP_GUI
-MainFrame.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+MainFrame.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
 MainFrame.BackgroundTransparency = 1.000
 MainFrame.Position = UDim2.new(0.6, 0, 0.3, 0)
-MainFrame.Size = UDim2.new(0, 200, 0, 305)
+MainFrame.Size = UDim2.new(0, 210, 0, 365) -- Увеличил высоту под новую кнопку
 MainFrame.Image = "rbxassetid://3570695787"
-MainFrame.ImageColor3 = Color3.fromRGB(30, 30, 30)
+MainFrame.ImageColor3 = Color3.fromRGB(22, 22, 22)
 MainFrame.ScaleType = Enum.ScaleType.Slice
 MainFrame.SliceCenter = Rect.new(100, 100, 100, 100)
-MainFrame.SliceScale = 0.100
+MainFrame.SliceScale = 0.120
+
+-- Тень или акцентная шапка
+local HeaderAccent = Instance.new("Frame")
+HeaderAccent.Parent = MainFrame
+HeaderAccent.BackgroundColor3 = Color3.fromRGB(0, 170, 255)
+HeaderAccent.BorderSizePixel = 0
+HeaderAccent.Position = UDim2.new(0, 0, 0, 0)
+HeaderAccent.Size = UDim2.new(1, 0, 0, 3)
 
 local Title = Instance.new("TextLabel")
 Title.Parent = MainFrame
 Title.BackgroundTransparency = 1.000
-Title.Size = UDim2.new(1, 0, 0, 35)
+Title.Size = UDim2.new(1, 0, 0, 38)
 Title.Font = Enum.Font.GothamBold
-Title.Text = "Player ESP"
-Title.TextColor3 = Color3.fromRGB(255, 255, 255)
-Title.TextSize = 14.000
+Title.Text = "  PLAYER ESP"
+Title.TextColor3 = Color3.fromRGB(240, 240, 240)
+Title.TextSize = 13.000
+Title.TextXAlignment = Enum.TextXAlignment.Left
+
+-- Индикатор хоткея в заголовке
+local HintLabel = Instance.new("TextLabel")
+HintLabel.Parent = MainFrame
+HintLabel.BackgroundTransparency = 1.000
+HintLabel.Position = UDim2.new(-0.05, 0, 0, 0)
+HintLabel.Size = UDim2.new(1, 0, 0, 38)
+HintLabel.Font = Enum.Font.Gotham
+HintLabel.Text = "[RightAlt]"
+HintLabel.TextColor3 = Color3.fromRGB(90, 90, 90)
+HintLabel.TextSize = 10.000
+HintLabel.TextXAlignment = Enum.TextXAlignment.Right
 
 local Container = Instance.new("Frame")
 Container.Parent = MainFrame
 Container.BackgroundTransparency = 1
-Container.Position = UDim2.new(0.05, 0, 0.13, 0)
-Container.Size = UDim2.new(0.9, 0, 0.85, 0)
+Container.Position = UDim2.new(0.05, 0, 0.12, 0)
+Container.Size = UDim2.new(0.9, 0, 0.86, 0)
 
 local UIListLayout = Instance.new("UIListLayout")
 UIListLayout.Parent = Container
 UIListLayout.SortOrder = Enum.SortOrder.LayoutOrder
-UIListLayout.Padding = UDim.new(0, 5)
+UIListLayout.Padding = UDim.new(0, 6)
 
 -- Драг интерфейса
 local function drag(GuiObj)
@@ -112,27 +132,31 @@ drag(MainFrame)
 local function createToggle(name, settingKey)
     local btn = Instance.new("TextButton")
     btn.Parent = Container
-    btn.BackgroundColor3 = Color3.fromRGB(45, 45, 45)
+    btn.BackgroundColor3 = Color3.fromRGB(32, 32, 32)
     btn.BorderSizePixel = 0
-    btn.Size = UDim2.new(1, 0, 0, 30)
+    btn.Size = UDim2.new(1, 0, 0, 31)
     btn.Font = Enum.Font.GothamMedium
-    btn.Text = " " .. name
-    btn.TextColor3 = Color3.fromRGB(255, 255, 255)
-    btn.TextSize = 12.000
+    btn.Text = "  " .. name
+    btn.TextColor3 = Color3.fromRGB(210, 210, 210)
+    btn.TextSize = 11.5
     btn.TextXAlignment = Enum.TextXAlignment.Left
+
+    local corner = Instance.new("UICorner")
+    corner.CornerRadius = UDim.new(0, 6)
+    corner.Parent = btn
 
     local status = Instance.new("Frame")
     status.Parent = btn
-    status.BackgroundColor3 = ESP_Settings[settingKey] and Color3.fromRGB(50, 200, 50) or Color3.fromRGB(200, 50, 50)
-    status.Position = UDim2.new(0.85, 0, 0.25, 0)
-    status.Size = UDim2.new(0, 14, 0, 14)
-    local corner = Instance.new("UICorner")
-    corner.CornerRadius = UDim.new(1, 0)
-    corner.Parent = status
+    status.BackgroundColor3 = ESP_Settings[settingKey] and Color3.fromRGB(0, 200, 100) or Color3.fromRGB(180, 40, 40)
+    status.Position = UDim2.new(0.84, 0, 0.28, 0)
+    status.Size = UDim2.new(0, 13, 0, 13)
+    local scorr = Instance.new("UICorner")
+    scorr.CornerRadius = UDim.new(1, 0)
+    scorr.Parent = status
 
     btn.MouseButton1Click:Connect(function()
         ESP_Settings[settingKey] = not ESP_Settings[settingKey]
-        status.BackgroundColor3 = ESP_Settings[settingKey] and Color3.fromRGB(50, 200, 50) or Color3.fromRGB(200, 50, 50)
+        status.BackgroundColor3 = ESP_Settings[settingKey] and Color3.fromRGB(0, 200, 100) or Color3.fromRGB(180, 40, 40)
     end)
 end
 
@@ -143,6 +167,65 @@ createToggle("Show Boxes", "Box")
 createToggle("Name & Distance", "NameInfo")
 createToggle("Health Bar", "HealthBar")
 createToggle("Chams", "Chams")
+
+-- === ФУНКЦИЯ ПОЛНОГО ОТКЛЮЧЕНИЯ (Kill Script) ===
+local function killScript()
+    ESP_Settings.Enabled = false
+    
+    -- Очищаем все рисунки (Drawings)
+    if _G.PlayerESP_Drawings then
+        for _, draw in ipairs(_G.PlayerESP_Drawings) do
+            pcall(function() draw:Remove() end)
+        end
+    end
+    
+    -- Удаляем подсветки (Highlights/Chams)
+    if _G.PlayerESP_Highlights then
+        for _, hl in ipairs(_G.PlayerESP_Highlights) do
+            pcall(function() hl:Destroy() end)
+        end
+    end
+    
+    -- Отключаем все хуки и события
+    if _G.PlayerESP_Connections then
+        for _, conn in pairs(_G.PlayerESP_Connections) do
+            pcall(function() conn:Disconnect() end)
+        end
+    end
+    
+    -- Уничтожаем интерфейс
+    if ESP_GUI then
+        ESP_GUI:Destroy()
+    end
+end
+
+-- Кнопка Kill Script в самом низу
+local killBtn = Instance.new("TextButton")
+killBtn.Parent = Container
+killBtn.BackgroundColor3 = Color3.fromRGB(120, 25, 25)
+killBtn.BorderSizePixel = 0
+killBtn.Size = UDim2.new(1, 0, 0, 33)
+killBtn.Font = Enum.Font.GothamBold
+killBtn.Text = "  Kill Script"
+killBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+killBtn.TextSize = 12.000
+killBtn.TextXAlignment = Enum.TextXAlignment.Left
+
+local kCorner = Instance.new("UICorner")
+kCorner.CornerRadius = UDim.new(0, 6)
+kCorner.Parent = killBtn
+
+killBtn.MouseButton1Click:Connect(function()
+    killScript()
+end)
+
+-- Хоткей Правый Alt для скрытия/показа меню
+local uiToggleConn = UserInputService.InputBegan:Connect(function(input, gameProcessed)
+    if input.KeyCode == Enum.KeyCode.RightAlt then
+        MainFrame.Visible = not MainFrame.Visible
+    end
+end)
+table.insert(_G.PlayerESP_Connections, uiToggleConn)
 
 -- === ЛОГИКА ESP ===
 local function hideESP(data)
@@ -210,7 +293,6 @@ local function createESP(player)
     return data
 end
 
--- Регистрация существующих и новых игроков
 for _, player in ipairs(Players:GetPlayers()) do
     if player ~= localPlayer then
         ESP_List[player] = createESP(player)
@@ -232,7 +314,6 @@ local removedConn = Players.PlayerRemoving:Connect(function(player)
 end)
 table.insert(_G.PlayerESP_Connections, removedConn)
 
--- Авто-обновление команд и списка игроков по очереди (по одному за такт / каждые 0.5 сек распределяются по числу игроков)
 local function getPlayersArray()
     local arr = {}
     for p, data in pairs(ESP_List) do
@@ -249,12 +330,10 @@ local currentIndex = 1
 local lastCheckTick = tick()
 local checkInterval = 0.5
 
--- Рендер-сервер для плавной анимации и поочередного апдейта
 local renderConn = RunService.RenderStepped:Connect(function(deltaTime)
     local currentTime = tick()
     local playersArr = getPlayersArray()
     
-    -- Поочередное обновление команд / валидации каждые 0.5 сек на одного игрока
     if currentTime - lastCheckTick >= (checkInterval / math.max(#playersArr, 1)) then
         lastCheckTick = currentTime
         if #playersArr > 0 then
@@ -267,7 +346,6 @@ local renderConn = RunService.RenderStepped:Connect(function(deltaTime)
         end
     end
 
-    -- Рендер всех активных
     for player, data in pairs(ESP_List) do
         local character = player.Character
         local isTeammate = data.IsTeammate or false
