@@ -29,7 +29,7 @@ local ESP_Settings = {
     Enabled = true,
     TeamCheck = false,
     TeamCheckMode = 1,
-    TargetTeams = {}, -- Здесь теперь хранится таблица выбранных команд {["TeamName"] = true}
+    TargetTeams = {}, -- Таблица выбранных команд {["TeamName"] = true}
     CModelMode = false,
     CModelModeType = 1,
     Box = true,
@@ -125,10 +125,10 @@ UIListLayout.Padding = UDim.new(0, 6)
 -- === ДОПОЛНИТЕЛЬНОЕ МЕНЮ ВЫБОРА КОМАНД (СПРАВА) ===
 local TeamSelectFrame = Instance.new("ImageLabel")
 TeamSelectFrame.Name = "TeamSelectFrame"
-TeamSelectFrame.Parent = MainFrame -- Привязано к MainFrame, чтобы двигалось вместе
+TeamSelectFrame.Parent = MainFrame
 TeamSelectFrame.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
 TeamSelectFrame.BackgroundTransparency = 1.000
-TeamSelectFrame.Position = UDim2.new(1, 8, 0, 0) -- Ровно справа с отступом 8 пикселей
+TeamSelectFrame.Position = UDim2.new(1, 8, 0, 0)
 TeamSelectFrame.Size = UDim2.new(0, 180, 0, 300)
 TeamSelectFrame.Image = "rbxassetid://3570695787"
 TeamSelectFrame.ImageColor3 = Color3.fromRGB(22, 22, 22)
@@ -173,20 +173,41 @@ TS_ListLayout.Parent = TS_Container
 TS_ListLayout.SortOrder = Enum.SortOrder.LayoutOrder
 TS_ListLayout.Padding = UDim.new(0, 5)
 
--- Функция обновления списка команд в выпадающем меню
+-- Продвинутая функция получения вообще всех существующих названий команд в сессии
 local function updateTeamDropdown()
     for _, child in ipairs(TS_Container:GetChildren()) do
         if child:IsA("TextButton") then child:Destroy() end
     end
 
+    -- Находим уникальные имена команд (как из сервиса Teams, так и напрямую от игроков)
+    local foundTeamNames = {}
+    
     for _, team in ipairs(Teams:GetTeams()) do
+        foundTeamNames[team.Name] = true
+    end
+    
+    for _, player in ipairs(Players:GetPlayers()) do
+        if player.Team then
+            foundTeamNames[player.Team.Name] = true
+        end
+    end
+
+    -- Сортируем список по алфавиту для красоты
+    local sortedTeams = {}
+    for teamName, _ in pairs(foundTeamNames) do
+        table.insert(sortedTeams, teamName)
+    end
+    table.sort(sortedTeams)
+
+    -- Отрисовка кнопок
+    for _, teamName do
         local tBtn = Instance.new("TextButton")
         tBtn.Parent = TS_Container
         tBtn.BackgroundColor3 = Color3.fromRGB(32, 32, 32)
         tBtn.BorderSizePixel = 0
         tBtn.Size = UDim2.new(1, -4, 0, 28)
         tBtn.Font = Enum.Font.GothamMedium
-        tBtn.Text = "  " .. team.Name
+        tBtn.Text = "  " .. teamName
         tBtn.TextColor3 = Color3.fromRGB(220, 220, 220)
         tBtn.TextSize = 10.5
         tBtn.TextXAlignment = Enum.TextXAlignment.Left
@@ -195,29 +216,28 @@ local function updateTeamDropdown()
         tCorner.CornerRadius = UDim.new(0, 5)
         tCorner.Parent = tBtn
 
-        -- Квадратик-индикатор выбора
         local checkbox = Instance.new("Frame")
         checkbox.Parent = tBtn
         checkbox.Position = UDim2.new(0.84, 0, 0.25, 0)
         checkbox.Size = UDim2.new(0, 14, 0, 14)
-        checkbox.BackgroundColor3 = ESP_Settings.TargetTeams[team.Name] and Color3.fromRGB(0, 170, 255) or Color3.fromRGB(50, 50, 50)
+        checkbox.BackgroundColor3 = ESP_Settings.TargetTeams[teamName] and Color3.fromRGB(0, 170, 255) or Color3.fromRGB(50, 50, 50)
         
         local cCorner = Instance.new("UICorner")
         cCorner.CornerRadius = UDim.new(0, 4)
         cCorner.Parent = checkbox
 
         local tConn = tBtn.MouseButton1Click:Connect(function()
-            ESP_Settings.TargetTeams[team.Name] = not ESP_Settings.TargetTeams[team.Name]
-            checkbox.BackgroundColor3 = ESP_Settings.TargetTeams[team.Name] and Color3.fromRGB(0, 170, 255) or Color3.fromRGB(50, 50, 50)
+            ESP_Settings.TargetTeams[teamName] = not ESP_Settings.TargetTeams[teamName]
+            checkbox.BackgroundColor3 = ESP_Settings.TargetTeams[teamName] and Color3.fromRGB(0, 170, 255) or Color3.fromRGB(50, 50, 50)
         end)
         table.insert(_G.PlayerESP_Connections, tConn)
     end
 end
 
--- Авто-обновление интерфейса при изменении команд на сервере
-table.insert(_G.PlayerESP_Connections, Teams.ChildAdded:Connect(updateTeamDropdown))
-table.insert(_G.PlayerESP_Connections, Teams.ChildRemoved:Connect(updateTeamDropdown))
-
+-- Мониторинг изменений команд и игроков
+table.insert(_G.PlayerESP_Connections, Teams.ChildAdded:Connect(function() if TeamSelectFrame.Visible then updateTeamDropdown() end end))
+table.insert(_G.PlayerESP_Connections, Teams.ChildRemoved:Connect(function() if TeamSelectFrame.Visible then updateTeamDropdown() end end))
+table.insert(_G.PlayerESP_Connections, Players.PlayerAdded:Connect(function() if TeamSelectFrame.Visible then updateTeamDropdown() end end))
 
 local function drag(GuiObj)
 	local dragToggle, dragInput, dragStart, startPos
@@ -362,7 +382,6 @@ createToggle("Master Switch", "Enabled")
 createToggle("Team Check", "TeamCheck")
 
 createModeCycle("TC Mode", "TeamCheckMode", TC_Modes, function(currentIndex)
-    -- Показываем меню выбора команд только если выбран режим "Select" (индекс 6)
     if TeamSelectFrame then
         TeamSelectFrame.Visible = (currentIndex == 6)
         if currentIndex == 6 then
@@ -371,7 +390,6 @@ createModeCycle("TC Mode", "TeamCheckMode", TC_Modes, function(currentIndex)
     end
 end)
 
--- Инициализируем начальную видимость правого меню
 TeamSelectFrame.Visible = (ESP_Settings.TeamCheckMode == 6)
 if ESP_Settings.TeamCheckMode == 6 then updateTeamDropdown() end
 
@@ -471,11 +489,10 @@ local function isTeammateCheck(player, character)
             if character.Parent == lpChar.Parent and character.Parent ~= workspace then return true end
         end
     elseif mode == 6 then
-        -- РЕЖИМ SELECT (Мульти-выбор): Показываем только тех игроков, чья команда активирована в списке TargetTeams
         if player.Team and ESP_Settings.TargetTeams[player.Team.Name] then
-            return false -- Не скрываем (это цель для ESP)
+            return false
         else
-            return true -- Скрываем (игрок не в выбранной команде)
+            return true
         end
     end
     return false
