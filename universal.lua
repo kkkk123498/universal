@@ -29,7 +29,7 @@ local ESP_Settings = {
     Enabled = true,
     TeamCheck = false,
     TeamCheckMode = 1,
-    TargetTeams = {}, -- Здесь теперь хранится таблица выбранных команд {["TeamName"] = true}
+    TargetTeams = {},
     CModelMode = false,
     CModelModeType = 1,
     Box = true,
@@ -42,7 +42,12 @@ local ESP_Settings = {
     TracerTransparency = 0.2,   
     ChamsFillAlpha = 0.5,
     ChamsOutlineAlpha = 0.2,
-    FadeSpeed = 5 
+    FadeSpeed = 5,
+    Noclip = false,
+    Fly = false,
+    FlySpeed = 1,
+    WalkSpeedEnabled = false,
+    WalkSpeed = 16
 }
 
 local TC_Modes = {"Standard", "Attributes", "ColorMatch", "Hierarchy", "DeepSearch", "Select"}
@@ -122,7 +127,7 @@ UIListLayout.Parent = Container
 UIListLayout.SortOrder = Enum.SortOrder.LayoutOrder
 UIListLayout.Padding = UDim.new(0, 6)
 
--- === ДОПОЛНИТЕЛЬНОЕ МЕНЮ ВЫБОРА КОМАНД (СПРАВА) ===
+-- === ДОПОЛНИТЕЛЬНОЕ МЕНЮ ВЫБОРА КОМАНД ===
 local TeamSelectFrame = Instance.new("ImageLabel")
 TeamSelectFrame.Name = "TeamSelectFrame"
 TeamSelectFrame.Parent = MainFrame 
@@ -173,16 +178,13 @@ TS_ListLayout.Parent = TS_Container
 TS_ListLayout.SortOrder = Enum.SortOrder.LayoutOrder
 TS_ListLayout.Padding = UDim.new(0, 5)
 
--- Функция обновления списка команд в выпадающем меню
 local function updateTeamDropdown()
-    -- Очищаем все элементы (кнопки, лейблы, отступы), кроме Layout
     for _, child in ipairs(TS_Container:GetChildren()) do
         if child:IsA("TextButton") or child:IsA("TextLabel") or (child:IsA("Frame") and child.Name == "Spacer") then 
             child:Destroy() 
         end
     end
 
-    -- Стандартные команды
     for _, team in ipairs(Teams:GetTeams()) do
         local tBtn = Instance.new("TextButton")
         tBtn.Parent = TS_Container
@@ -216,7 +218,6 @@ local function updateTeamDropdown()
         table.insert(_G.PlayerESP_Connections, tConn)
     end
 
-    -- === ДОПОЛНЕНИЕ ДЛЯ ER:LC ===
     local spacer = Instance.new("Frame")
     spacer.Name = "Spacer"
     spacer.Parent = TS_Container
@@ -253,7 +254,6 @@ local function updateTeamDropdown()
     crimCheckbox.Position = UDim2.new(0.84, 0, 0.25, 0)
     crimCheckbox.Size = UDim2.new(0, 14, 0, 14)
     
-    -- Проверка активности (если включена хотя бы одна из вариаций)
     local isCrimActive = ESP_Settings.TargetTeams["Criminals"] or ESP_Settings.TargetTeams["Criminal"]
     crimCheckbox.BackgroundColor3 = isCrimActive and Color3.fromRGB(0, 170, 255) or Color3.fromRGB(50, 50, 50)
     
@@ -263,7 +263,6 @@ local function updateTeamDropdown()
 
     local cConn = crimBtn.MouseButton1Click:Connect(function()
         isCrimActive = not isCrimActive
-        -- Включаем сразу оба ключа для надежности
         ESP_Settings.TargetTeams["Criminals"] = isCrimActive
         ESP_Settings.TargetTeams["Criminal"] = isCrimActive
         crimCheckbox.BackgroundColor3 = isCrimActive and Color3.fromRGB(0, 170, 255) or Color3.fromRGB(50, 50, 50)
@@ -271,7 +270,6 @@ local function updateTeamDropdown()
     table.insert(_G.PlayerESP_Connections, cConn)
 end
 
--- Авто-обновление интерфейса при изменении команд на сервере
 table.insert(_G.PlayerESP_Connections, Teams.ChildAdded:Connect(updateTeamDropdown))
 table.insert(_G.PlayerESP_Connections, Teams.ChildRemoved:Connect(updateTeamDropdown))
 
@@ -414,6 +412,7 @@ local function createInputField(name, settingKey, min, max, isFloat)
     table.insert(_G.PlayerESP_Connections, conn)
 end
 
+-- === СОЗДАНИЕ КНОПОК МЕНЮ ===
 createToggle("Master Switch", "Enabled")
 createToggle("Team Check", "TeamCheck")
 
@@ -442,8 +441,24 @@ createToggle("Tracers", "Tracers")
 createInputField("Tracer Thickness", "TracerThickness", 1, 10, false)
 createInputField("Tracer Transp", "TracerTransparency", 0, 1, true)
 
+local extraSpacer = Instance.new("Frame")
+extraSpacer.Parent = Container
+extraSpacer.BackgroundTransparency = 1
+extraSpacer.Size = UDim2.new(1, 0, 0, 5)
+
+createToggle("Noclip", "Noclip")
+createToggle("Fly", "Fly")
+createInputField("Fly Speed", "FlySpeed", 0.1, 50, true)
+
+createToggle("WalkSpeed", "WalkSpeedEnabled")
+createInputField("Speed Value", "WalkSpeed", 0, 500, true)
+
 local function killScript()
     ESP_Settings.Enabled = false
+    ESP_Settings.Fly = false
+    ESP_Settings.Noclip = false
+    ESP_Settings.WalkSpeedEnabled = false
+    
     if _G.PlayerESP_Drawings then
         for _, draw in ipairs(_G.PlayerESP_Drawings) do pcall(function() draw:Remove() end) end
     end
@@ -453,6 +468,25 @@ local function killScript()
     if _G.PlayerESP_Connections then
         for _, conn in pairs(_G.PlayerESP_Connections) do pcall(function() conn:Disconnect() end) end
     end
+    
+    if localPlayer.Character then
+        local hum = localPlayer.Character:FindFirstChildOfClass("Humanoid")
+        if hum then 
+            hum.WalkSpeed = 16 
+            hum.PlatformStand = false
+        end
+        local hrp = localPlayer.Character:FindFirstChild("HumanoidRootPart")
+        if hrp then
+            local bg = hrp:FindFirstChild("IY_FlyGyro")
+            local bv = hrp:FindFirstChild("IY_FlyVel")
+            if bg then bg:Destroy() end
+            if bv then bv:Destroy() end
+        end
+        for _, child in pairs(localPlayer.Character:GetDescendants()) do
+            if child:IsA("BasePart") then child.CanCollide = true end
+        end
+    end
+    
     if ESP_GUI then ESP_GUI:Destroy() end
 end
 
@@ -484,6 +518,104 @@ local uiToggleConn = UserInputService.InputBegan:Connect(function(input, gamePro
 end)
 table.insert(_G.PlayerESP_Connections, uiToggleConn)
 
+-- === ХАКИ ДВИЖЕНИЯ (FLY, NOCLIP, WALKSPEED) ===
+local FlyKeys = {W = false, A = false, S = false, D = false, Q = false, E = false}
+local flyKeyDown = UserInputService.InputBegan:Connect(function(input, processed)
+    if processed then return end
+    if input.KeyCode == Enum.KeyCode.W then FlyKeys.W = true
+    elseif input.KeyCode == Enum.KeyCode.S then FlyKeys.S = true
+    elseif input.KeyCode == Enum.KeyCode.A then FlyKeys.A = true
+    elseif input.KeyCode == Enum.KeyCode.D then FlyKeys.D = true
+    elseif input.KeyCode == Enum.KeyCode.Q then FlyKeys.Q = true
+    elseif input.KeyCode == Enum.KeyCode.E then FlyKeys.E = true
+    end
+end)
+local flyKeyUp = UserInputService.InputEnded:Connect(function(input, processed)
+    if input.KeyCode == Enum.KeyCode.W then FlyKeys.W = false
+    elseif input.KeyCode == Enum.KeyCode.S then FlyKeys.S = false
+    elseif input.KeyCode == Enum.KeyCode.A then FlyKeys.A = false
+    elseif input.KeyCode == Enum.KeyCode.D then FlyKeys.D = false
+    elseif input.KeyCode == Enum.KeyCode.Q then FlyKeys.Q = false
+    elseif input.KeyCode == Enum.KeyCode.E then FlyKeys.E = false
+    end
+end)
+table.insert(_G.PlayerESP_Connections, flyKeyDown)
+table.insert(_G.PlayerESP_Connections, flyKeyUp)
+
+local flyAndNoclipConn = RunService.Stepped:Connect(function(time, deltaTime)
+    -- Noclip
+    if ESP_Settings.Noclip and localPlayer.Character then
+        for _, child in pairs(localPlayer.Character:GetDescendants()) do
+            if child:IsA("BasePart") and child.CanCollide then
+                child.CanCollide = false
+            end
+        end
+    end
+
+    if localPlayer.Character then
+        local hrp = localPlayer.Character:FindFirstChild("HumanoidRootPart")
+        local hum = localPlayer.Character:FindFirstChildOfClass("Humanoid")
+        
+        -- WalkSpeed
+        if ESP_Settings.WalkSpeedEnabled and hum then
+            hum.WalkSpeed = ESP_Settings.WalkSpeed
+        end
+
+        -- Fly
+        if hrp then
+            if ESP_Settings.Fly then
+                if not hrp:FindFirstChild("IY_FlyGyro") then
+                    local bg = Instance.new("BodyGyro")
+                    bg.Name = "IY_FlyGyro"
+                    bg.P = 9e4
+                    bg.maxTorque = Vector3.new(9e9, 9e9, 9e9)
+                    bg.cframe = hrp.CFrame
+                    bg.Parent = hrp
+                    
+                    local bv = Instance.new("BodyVelocity")
+                    bv.Name = "IY_FlyVel"
+                    bv.velocity = Vector3.new(0, 0, 0)
+                    bv.maxForce = Vector3.new(9e9, 9e9, 9e9)
+                    bv.Parent = hrp
+                    
+                    if hum then hum.PlatformStand = true end
+                end
+                
+                local bg = hrp:FindFirstChild("IY_FlyGyro")
+                local bv = hrp:FindFirstChild("IY_FlyVel")
+                
+                if bg and bv then
+                    local camCFrame = camera.CoordinateFrame
+                    local speed = ESP_Settings.FlySpeed * 50 
+                    local moveDir = Vector3.new(
+                        (FlyKeys.D and 1 or 0) - (FlyKeys.A and 1 or 0),
+                        (FlyKeys.E and 1 or 0) - (FlyKeys.Q and 1 or 0),
+                        (FlyKeys.S and 1 or 0) - (FlyKeys.W and 1 or 0)
+                    )
+                    
+                    bg.cframe = camCFrame
+                    if moveDir.Magnitude > 0 then
+                        bv.velocity = camCFrame:VectorToWorldSpace(moveDir.Unit) * speed
+                    else
+                        bv.velocity = Vector3.new(0, 0, 0)
+                    end
+                end
+            else
+                local bg = hrp:FindFirstChild("IY_FlyGyro")
+                local bv = hrp:FindFirstChild("IY_FlyVel")
+                if bg then bg:Destroy() end
+                if bv then bv:Destroy() end
+                
+                if hum and hum.PlatformStand then
+                    hum.PlatformStand = false
+                end
+            end
+        end
+    end
+end)
+table.insert(_G.PlayerESP_Connections, flyAndNoclipConn)
+
+-- === ЛОГИКА ESP ===
 local function hideESP(data)
     data.Box.Visible = false
     data.NameText.Visible = false
@@ -525,18 +657,16 @@ local function isTeammateCheck(player, character)
             if character.Parent == lpChar.Parent and character.Parent ~= workspace then return true end
         end
     elseif mode == 6 then
-        -- Адаптированная логика: проверяем текстовое значение названия команды
         local tName = player.Team and player.Team.Name or ""
         if ESP_Settings.TargetTeams[tName] then
-            return false -- Не скрываем (нашли совпадение, включая кастомный криминал)
+            return false
         else
-            return true -- Скрываем
+            return true 
         end
     end
     return false
 end
 
--- === УСКОРЕННЫЙ УМНЫЙ WALL CHECK ===
 local raycastParams = RaycastParams.new()
 raycastParams.FilterType = Enum.RaycastFilterType.Exclude
 raycastParams.IgnoreWater = true
