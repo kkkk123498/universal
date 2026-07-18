@@ -4,19 +4,13 @@ pcall(function()
         game:GetService("CoreGui").PlayerESP_UI:Destroy()
     end
     if _G.PlayerESP_Connections then
-        for _, conn in pairs(_G.PlayerESP_Connections) do
-            conn:Disconnect()
-        end
+        for _, conn in pairs(_G.PlayerESP_Connections) do conn:Disconnect() end
     end
     if _G.PlayerESP_Drawings then
-        for _, draw in ipairs(_G.PlayerESP_Drawings) do
-            draw:Remove()
-        end
+        for _, draw in ipairs(_G.PlayerESP_Drawings) do draw:Remove() end
     end
     if _G.PlayerESP_Highlights then
-        for _, hl in ipairs(_G.PlayerESP_Highlights) do
-            hl:Destroy()
-        end
+        for _, hl in ipairs(_G.PlayerESP_Highlights) do hl:Destroy() end
     end
 end)
 
@@ -33,9 +27,9 @@ local localPlayer = Players.LocalPlayer
 local ESP_Settings = {
     Enabled = true,
     TeamCheck = false,
-    TeamCheckMode = 1, -- 1: Standard, 2: Attributes, 3: ColorMatch, 4: Hierarchy, 5: DeepSearch
+    TeamCheckMode = 1,
     CModelMode = false,
-    CModelModeType = 1, -- 1: BoundingBox, 2: Dynamic, 3: Root Fallback
+    CModelModeType = 1,
     Box = true,
     NameInfo = true,
     HealthBar = true,
@@ -46,7 +40,7 @@ local ESP_Settings = {
     TracerTransparency = 0.2,   
     ChamsFillAlpha = 0.5,
     ChamsOutlineAlpha = 0.2,
-    FadeSpeed = 2.5
+    FadeSpeed = 5 -- Увеличина скорость для большей плавности
 }
 
 local TC_Modes = {"Standard", "Attributes", "ColorMatch", "Hierarchy", "DeepSearch"}
@@ -251,7 +245,7 @@ local function createInputField(name, settingKey, min, max, isFloat)
     inputCorner.CornerRadius = UDim.new(0, 4)
     inputCorner.Parent = input
     
-    local conn = input.FocusLost:Connect(function(enterPressed)
+    local conn = input.FocusLost:Connect(function()
         local val = tonumber(input.Text)
         if val then
             if not isFloat then val = math.floor(val) end
@@ -340,11 +334,10 @@ local function isTeammateCheck(player, character)
     local mode = ESP_Settings.TeamCheckMode
     local lpChar = localPlayer.Character
 
-    if mode == 1 then -- Standard
+    if mode == 1 then 
         if localPlayer.Team ~= nil and player.Team == localPlayer.Team then return true end
         if localPlayer.TeamColor ~= nil and player.TeamColor == localPlayer.TeamColor and not player.Neutral then return true end
-    
-    elseif mode == 2 then -- Attributes
+    elseif mode == 2 then 
         if character then
             for _, attrName in ipairs({"Team", "Clan", "Faction", "Group", "Alliance", "Side"}) do
                 local charAttr = character:GetAttribute(attrName)
@@ -352,78 +345,54 @@ local function isTeammateCheck(player, character)
                 if charAttr and localAttr and charAttr == localAttr then return true end
             end
         end
-        for _, attrName in ipairs({"Team", "Clan", "Faction", "Side"}) do
-            local pAttr = player:GetAttribute(attrName)
-            local lAttr = localPlayer:GetAttribute(attrName)
-            if pAttr and lAttr and pAttr == lAttr then return true end
-        end
-    
-    elseif mode == 3 then -- ColorMatch
+    elseif mode == 3 then 
         if character and lpChar then
             local pPart = character:FindFirstChild("Torso") or character:FindFirstChild("UpperTorso") or character:FindFirstChild("Head")
             local lPart = lpChar:FindFirstChild("Torso") or lpChar:FindFirstChild("UpperTorso") or lpChar:FindFirstChild("Head")
             if pPart and lPart and pPart.Color == lPart.Color then return true end
         end
-        
-    elseif mode == 4 then -- Hierarchy 
+    elseif mode == 4 then 
         if character and lpChar and character.Parent and lpChar.Parent then
-            if character.Parent == lpChar.Parent and character.Parent ~= workspace then
-                return true
-            end
+            if character.Parent == lpChar.Parent and character.Parent ~= workspace then return true end
         end
-        
-    elseif mode == 5 then -- DeepSearch
-        local function scanValues(obj1, obj2)
-            if not obj1 or not obj2 then return false end
-            for _, val1 in ipairs(obj1:GetChildren()) do
-                if val1:IsA("StringValue") or val1:IsA("IntValue") or val1:IsA("ObjectValue") then
-                    local vName = string.lower(val1.Name)
-                    if string.find(vName, "team") or string.find(vName, "faction") or string.find(vName, "side") or string.find(vName, "role") then
-                        local val2 = obj2:FindFirstChild(val1.Name)
-                        if val2 and val1.Value == val2.Value then
-                            return true
-                        end
-                    end
-                end
-            end
-            return false
-        end
-        
-        if scanValues(player, localPlayer) then return true end
-        if scanValues(character, lpChar) then return true end
     end
-    
     return false
 end
 
--- === УМНЫЙ WALL CHECK (ИГНОРИРОВАНИЕ БЕЗ КОЛЛИЗИИ) ===
+-- === УСКОРЕННЫЙ УМНЫЙ WALL CHECK ===
+local raycastParams = RaycastParams.new()
+raycastParams.FilterType = Enum.RaycastFilterType.Exclude
+raycastParams.IgnoreWater = true
+
 local function checkVisibility(targetPart, targetCharacter)
     if not targetPart or not targetCharacter then return false end
     local origin = camera.CFrame.Position
-    local direction = (targetPart.Position - origin)
+    local direction = targetPart.Position - origin
     
     local ignoreList = {camera, localPlayer.Character, targetCharacter}
-    local ray = Ray.new(origin, direction)
+    raycastParams.FilterDescendantsInstances = ignoreList
     
     local iterations = 0
-    -- Цикл проверяет объекты на пути луча
-    while iterations < 30 do
-        local hitPart = workspace:FindPartOnRayWithIgnoreList(ray, ignoreList, true, true)
+    -- Ограничиваем цикл максимум 10 слоями, чтобы избежать фризов игры
+    while iterations < 10 do
+        local result = workspace:Raycast(origin, direction, raycastParams)
         
-        if not hitPart then
-            return true -- Луч долетел до цели, путь чист
+        if not result then
+            return true -- Преград нет
         end
         
-        -- Если объект прозрачный (невидимая стена) или сквозь него можно пройти
-        if hitPart.CanCollide == false or hitPart.Transparency == 1 then
-            table.insert(ignoreList, hitPart) -- Добавляем объект в игнор
-            iterations = iterations + 1 -- Продолжаем пускать луч
+        local hitPart = result.Instance
+        -- Если объект прозрачный, не имеет коллизии или это часть хитбокса
+        if hitPart.CanCollide == false or hitPart.Transparency == 1 or hitPart.Name == "HumanoidRootPart" then
+            table.insert(ignoreList, hitPart)
+            raycastParams.FilterDescendantsInstances = ignoreList
+            iterations = iterations + 1
         else
-            return false -- Уперлись в настоящую физическую преграду
+            return false -- Твердая преграда
         end
     end
     
-    return false -- Если слишком много объектов, считаем что закрыто
+    return false 
 end
 
 local function createESP(player)
@@ -440,26 +409,22 @@ local function createESP(player)
         Chams = Instance.new("Highlight")
     }
 
-    data.Box.Visible = false; data.Box.Color = Color3.fromRGB(255, 255, 255); data.Box.Thickness = 1; data.Box.Transparency = 0; data.Box.Filled = false
+    data.Box.Visible = false; data.Box.Thickness = 1.5; data.Box.Filled = false
     table.insert(_G.PlayerESP_Drawings, data.Box)
 
-    data.NameText.Visible = false; data.NameText.Color = Color3.fromRGB(255, 255, 255); data.NameText.Center = true; data.NameText.Outline = true; data.NameText.Size = 13; data.NameText.Font = 2; data.NameText.Transparency = 0
+    data.NameText.Visible = false; data.NameText.Center = true; data.NameText.Outline = true; data.NameText.Size = 13; data.NameText.Font = 2
     table.insert(_G.PlayerESP_Drawings, data.NameText)
 
-    data.HealthBarBG.Visible = false; data.HealthBarBG.Color = Color3.fromRGB(0, 0, 0); data.HealthBarBG.Thickness = 1; data.HealthBarBG.Filled = true; data.HealthBarBG.Transparency = 0
+    data.HealthBarBG.Visible = false; data.HealthBarBG.Color = Color3.fromRGB(0, 0, 0); data.HealthBarBG.Filled = true
     table.insert(_G.PlayerESP_Drawings, data.HealthBarBG)
 
-    data.HealthBar.Visible = false; data.HealthBar.Color = Color3.fromRGB(0, 255, 0); data.HealthBar.Thickness = 1; data.HealthBar.Filled = true; data.HealthBar.Transparency = 0
+    data.HealthBar.Visible = false; data.HealthBar.Filled = true
     table.insert(_G.PlayerESP_Drawings, data.HealthBar)
 
-    data.Tracer.Visible = false
-    data.Tracer.Thickness = ESP_Settings.TracerThickness
-    data.Tracer.Transparency = ESP_Settings.TracerTransparency
-    data.Tracer.Color = Color3.new(1, 1, 1)
+    data.Tracer.Visible = false; data.Tracer.Color = Color3.new(1, 1, 1)
     table.insert(_G.PlayerESP_Drawings, data.Tracer)
 
     data.Chams.Name = "Chams_" .. player.Name
-    data.Chams.FillColor = Color3.fromRGB(255, 50, 50); data.Chams.OutlineColor = Color3.fromRGB(255, 255, 255)
     data.Chams.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop
     data.Chams.Enabled = false
     data.Chams.Parent = ESP_GUI
@@ -523,44 +488,35 @@ local renderConn = RunService.RenderStepped:Connect(function(deltaTime)
         local hum = character and character:FindFirstChildOfClass("Humanoid") or nil
 
         if shouldShow then
+            local hrp = character:FindFirstChild("HumanoidRootPart")
             if ESP_Settings.CModelMode then
                 local cmMode = ESP_Settings.CModelModeType
-                
                 if cmMode == 1 then
                     local cframe, size = character:GetBoundingBox()
                     if not cframe or size == Vector3.new() then shouldShow = false else
                         rootPos = cframe.Position
-                        targetPart = character:FindFirstChild("HumanoidRootPart") or character.PrimaryPart
+                        targetPart = hrp or character.PrimaryPart
                         local heightY = math.max(size.Y, 2) 
-                        headPos = rootPos + Vector3.new(0, heightY / 2, 0)
-                        legPos = rootPos - Vector3.new(0, heightY / 2, 0)
+                        headPos = rootPos + Vector3.new(0, heightY * 0.5, 0)
+                        legPos = rootPos - Vector3.new(0, heightY * 0.5, 0)
                     end
-                    
                 elseif cmMode == 2 then
-                    local highestY, lowestY = -math.huge, math.huge
-                    local root = character.PrimaryPart or character:FindFirstChild("HumanoidRootPart") or character:FindFirstChildWhichIsA("BasePart")
+                    -- Оптимизированный Dynamic-поиск высоты (меньше лагов)
+                    local root = character.PrimaryPart or hrp
                     if not root then shouldShow = false else
                         rootPos = root.Position
                         targetPart = root
-                        for _, part in ipairs(character:GetChildren()) do
-                            if part:IsA("BasePart") then
-                                local y = part.Position.Y
-                                local halfSize = part.Size.Y / 2
-                                if (y + halfSize) > highestY then highestY = y + halfSize end
-                                if (y - halfSize) < lowestY then lowestY = y - halfSize end
-                            end
-                        end
-                        if highestY == -math.huge then
-                            headPos = rootPos + Vector3.new(0, 2, 0)
-                            legPos = rootPos - Vector3.new(0, 3, 0)
-                        else
-                            headPos = Vector3.new(rootPos.X, highestY, rootPos.Z)
-                            legPos = Vector3.new(rootPos.X, lowestY, rootPos.Z)
-                        end
+                        local highestY, lowestY = rootPos.Y + 1, rootPos.Y - 2.5
+                        local head = character:FindFirstChild("Head")
+                        local lLeg = character:FindFirstChild("LeftFoot") or character:FindFirstChild("Left Leg")
+                        
+                        if head then highestY = head.Position.Y + (head.Size.Y * 0.5) end
+                        if lLeg then lowestY = lLeg.Position.Y - (lLeg.Size.Y * 0.5) end
+                        
+                        headPos = Vector3.new(rootPos.X, highestY, rootPos.Z)
+                        legPos = Vector3.new(rootPos.X, lowestY, rootPos.Z)
                     end
-                    
                 elseif cmMode == 3 then
-                    local hrp = character:FindFirstChild("HumanoidRootPart") or character:FindFirstChildWhichIsA("BasePart")
                     if not hrp then shouldShow = false else
                         targetPart = hrp
                         rootPos = hrp.Position
@@ -569,7 +525,6 @@ local renderConn = RunService.RenderStepped:Connect(function(deltaTime)
                     end
                 end
             else
-                local hrp = character:FindFirstChild("HumanoidRootPart")
                 if not hrp or not hum then shouldShow = false else
                     targetPart = hrp
                     rootPos = hrp.Position
@@ -588,12 +543,11 @@ local renderConn = RunService.RenderStepped:Connect(function(deltaTime)
             if not onScreen then shouldShow = false end
         end
 
+        -- Плавное и правильное затухание
         if shouldShow then
             data.FadeAlpha = math.clamp(data.FadeAlpha + (deltaTime * ESP_Settings.FadeSpeed), 0, 1)
         else
-            data.FadeAlpha = 0 
-            hideESP(data)
-            continue
+            data.FadeAlpha = math.clamp(data.FadeAlpha - (deltaTime * (ESP_Settings.FadeSpeed * 2)), 0, 1)
         end
 
         if data.FadeAlpha > 0.01 then
@@ -609,78 +563,78 @@ local renderConn = RunService.RenderStepped:Connect(function(deltaTime)
                 if isVisible then
                     activeBoxColor = Color3.fromRGB(255, 50, 50)
                     activeChamsColor = Color3.fromRGB(50, 100, 255)
-                else
-                    activeBoxColor = Color3.fromRGB(255, 255, 255)
-                    activeChamsColor = Color3.fromRGB(255, 50, 50)
                 end
             end
 
             data.Box.Color = activeBoxColor
             data.Box.Transparency = data.FadeAlpha
+            data.NameText.Color = activeBoxColor
             data.NameText.Transparency = data.FadeAlpha
             data.HealthBar.Transparency = data.FadeAlpha
             data.HealthBarBG.Transparency = data.FadeAlpha
 
             if ESP_Settings.Chams then
-                data.Chams.Adornee = character
+                if data.Chams.Adornee ~= character then data.Chams.Adornee = character end
                 data.Chams.FillColor = activeChamsColor
                 data.Chams.FillTransparency = ESP_Settings.ChamsFillAlpha + ((1 - ESP_Settings.ChamsFillAlpha) * (1 - data.FadeAlpha))
                 data.Chams.OutlineTransparency = ESP_Settings.ChamsOutlineAlpha + ((1 - ESP_Settings.ChamsOutlineAlpha) * (1 - data.FadeAlpha))
                 data.Chams.Enabled = true
             else
-                data.Chams.Adornee = nil
                 data.Chams.Enabled = false
             end
 
-            local headScreen = camera:WorldToViewportPoint(headPos)
-            local legScreen = camera:WorldToViewportPoint(legPos)
-            local height = math.abs(headScreen.Y - legScreen.Y)
-            local width = height / 2
+            if vector and headPos and legPos then
+                local headScreen = camera:WorldToViewportPoint(headPos)
+                local legScreen = camera:WorldToViewportPoint(legPos)
+                local height = math.abs(headScreen.Y - legScreen.Y)
+                local width = height / 2
 
-            if ESP_Settings.Box then
-                data.Box.Size = Vector2.new(width, height)
-                data.Box.Position = Vector2.new(vector.X - width / 2, vector.Y - height / 2)
-                data.Box.Visible = true
-            else
-                data.Box.Visible = false
+                if ESP_Settings.Box then
+                    data.Box.Size = Vector2.new(width, height)
+                    data.Box.Position = Vector2.new(vector.X - width / 2, vector.Y - height / 2)
+                    data.Box.Visible = true
+                else
+                    data.Box.Visible = false
+                end
+
+                if ESP_Settings.NameInfo then
+                    local dist = math.floor((camera.CFrame.Position - rootPos).Magnitude)
+                    data.NameText.Text = player.Name .. " [" .. dist .. "]"
+                    data.NameText.Position = Vector2.new(vector.X, vector.Y - height / 2 - 15)
+                    data.NameText.Visible = true
+                else
+                    data.NameText.Visible = false
+                end
+
+                if ESP_Settings.HealthBar and hum then
+                    local healthPct = math.clamp(hum.Health / hum.MaxHealth, 0, 1)
+                    if healthPct ~= healthPct then healthPct = 1 end 
+
+                    data.HealthBarBG.Size = Vector2.new(2, height)
+                    data.HealthBarBG.Position = Vector2.new(vector.X - width / 2 - 5, vector.Y - height / 2)
+                    data.HealthBar.Size = Vector2.new(2, height * healthPct)
+                    data.HealthBar.Position = Vector2.new(vector.X - width / 2 - 5, (vector.Y - height / 2) + (height - (height * healthPct)))
+                    data.HealthBar.Color = Color3.fromHSV(healthPct * 0.3, 1, 1)
+                    data.HealthBarBG.Visible = true
+                    data.HealthBar.Visible = true
+                else
+                    data.HealthBarBG.Visible = false
+                    data.HealthBar.Visible = false
+                end
+
+                if ESP_Settings.Tracers and onScreen then
+                    data.Tracer.From = screenCenter
+                    data.Tracer.To = Vector2.new(vector.X, vector.Y)
+                    data.Tracer.Color = getTeamColor(player)
+                    data.Tracer.Thickness = ESP_Settings.TracerThickness
+                    data.Tracer.Transparency = (1 - ESP_Settings.TracerTransparency) * data.FadeAlpha
+                    data.Tracer.Visible = true
+                else
+                    data.Tracer.Visible = false
+                end
             end
-
-            if ESP_Settings.NameInfo then
-                local dist = math.floor((camera.CFrame.Position - rootPos).Magnitude)
-                data.NameText.Text = player.Name .. " [" .. dist .. "]"
-                data.NameText.Position = Vector2.new(vector.X, vector.Y - height / 2 - 15)
-                data.NameText.Visible = true
-            else
-                data.NameText.Visible = false
-            end
-
-            if ESP_Settings.HealthBar and hum then
-                local healthPct = hum.Health / hum.MaxHealth
-                if healthPct ~= healthPct or healthPct == math.huge then healthPct = 1 end 
-                healthPct = math.clamp(healthPct, 0, 1)
-
-                data.HealthBarBG.Size = Vector2.new(2, height)
-                data.HealthBarBG.Position = Vector2.new(vector.X - width / 2 - 5, vector.Y - height / 2)
-                data.HealthBar.Size = Vector2.new(2, height * healthPct)
-                data.HealthBar.Position = Vector2.new(vector.X - width / 2 - 5, (vector.Y - height / 2) + (height - (height * healthPct)))
-                data.HealthBar.Color = Color3.fromHSV(healthPct * 0.3, 1, 1)
-                data.HealthBarBG.Visible = true
-                data.HealthBar.Visible = true
-            else
-                data.HealthBarBG.Visible = false
-                data.HealthBar.Visible = false
-            end
-
-            if ESP_Settings.Tracers and onScreen then
-                data.Tracer.From = screenCenter
-                data.Tracer.To = Vector2.new(vector.X, vector.Y)
-                data.Tracer.Color = getTeamColor(player)
-                data.Tracer.Thickness = ESP_Settings.TracerThickness
-                data.Tracer.Transparency = (1 - ESP_Settings.TracerTransparency) * data.FadeAlpha
-                data.Tracer.Visible = true
-            else
-                data.Tracer.Visible = false
-            end
+        else
+            hideESP(data)
         end
     end
 end)
