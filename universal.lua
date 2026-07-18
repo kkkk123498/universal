@@ -162,7 +162,7 @@ local TS_Container = Instance.new("ScrollingFrame")
 TS_Container.Parent = TeamSelectFrame
 TS_Container.BackgroundTransparency = 1
 TS_Container.Position = UDim2.new(0.05, 0, 0.12, 0)
-TS_Container.Size = UDim2.new(0.9, 0, 0.84, 0) -- Возвращен полноценный размер для идеального скролла
+TS_Container.Size = UDim2.new(0.9, 0, 0.84, 0)
 TS_Container.CanvasSize = UDim2.new(0, 0, 0, 0)
 TS_Container.AutomaticCanvasSize = Enum.AutomaticSize.Y
 TS_Container.ScrollBarThickness = 3
@@ -176,7 +176,7 @@ TS_ListLayout.Parent = TS_Container
 TS_ListLayout.SortOrder = Enum.SortOrder.LayoutOrder
 TS_ListLayout.Padding = UDim.new(0, 5)
 
--- Продвинутая функция получения вообще всех существующих названий команд в сессии
+-- Функция обновления списка команд
 local function updateTeamDropdown()
     for _, child in ipairs(TS_Container:GetChildren()) do
         if child:IsA("TextButton") or child:IsA("TextLabel") or child:IsA("Frame") then 
@@ -184,10 +184,7 @@ local function updateTeamDropdown()
         end
     end
 
-    -- Находим уникальные имена команд
     local foundTeamNames = {}
-    
-    -- Принудительно добавляем Criminals
     foundTeamNames["Criminals"] = true
     
     for _, team in ipairs(Teams:GetTeams()) do
@@ -200,14 +197,12 @@ local function updateTeamDropdown()
         end
     end
 
-    -- Сортируем список по алфавиту
     local sortedTeams = {}
     for teamName, _ in pairs(foundTeamNames) do
         table.insert(sortedTeams, teamName)
     end
     table.sort(sortedTeams)
 
-    -- Отрисовка кнопок команд
     for i, teamName in ipairs(sortedTeams) do
         local tBtn = Instance.new("TextButton")
         tBtn.Parent = TS_Container
@@ -219,7 +214,7 @@ local function updateTeamDropdown()
         tBtn.TextColor3 = Color3.fromRGB(220, 220, 220)
         tBtn.TextSize = 10.5
         tBtn.TextXAlignment = Enum.TextXAlignment.Left
-        tBtn.LayoutOrder = i -- Сохраняем сортировку
+        tBtn.LayoutOrder = i
 
         local tCorner = Instance.new("UICorner")
         tCorner.CornerRadius = UDim.new(0, 5)
@@ -242,14 +237,12 @@ local function updateTeamDropdown()
         table.insert(_G.PlayerESP_Connections, tConn)
     end
 
-    -- Разделительный отступ перед надписью
     local spacer = Instance.new("Frame")
     spacer.Parent = TS_Container
     spacer.BackgroundTransparency = 1
     spacer.Size = UDim2.new(1, 0, 0, 4)
     spacer.LayoutOrder = 9998
 
-    -- Надпись "ДЛЯ ER:LC" теперь находится внутри контейнера снизу и не ломает интерфейс
     local ERLC_Label = Instance.new("TextLabel")
     ERLC_Label.Parent = TS_Container
     ERLC_Label.BackgroundTransparency = 1.000
@@ -262,7 +255,6 @@ local function updateTeamDropdown()
     ERLC_Label.LayoutOrder = 9999
 end
 
--- Мониторинг изменений команд и игроков
 table.insert(_G.PlayerESP_Connections, Teams.ChildAdded:Connect(function() if TeamSelectFrame.Visible then updateTeamDropdown() end end))
 table.insert(_G.PlayerESP_Connections, Teams.ChildRemoved:Connect(function() if TeamSelectFrame.Visible then updateTeamDropdown() end end))
 table.insert(_G.PlayerESP_Connections, Players.PlayerAdded:Connect(function() if TeamSelectFrame.Visible then updateTeamDropdown() end end))
@@ -490,7 +482,6 @@ local function getTeamColor(player)
 	return Color3.new(1, 1, 1)
 end
 
--- Внутренняя сверка имени команды или кастомного параметра игрока в ER:LC
 local function checkPlayerTeamName(player)
     if player.Team and player.Team.Name then
         return player.Team.Name
@@ -528,10 +519,11 @@ local function isTeammateCheck(player, character)
         end
     elseif mode == 6 then
         local pTeamName = checkPlayerTeamName(player)
+        -- ИСПРАВЛЕННАЯ ЛОГИКА ФИЛЬТРАЦИИ:
         if pTeamName and ESP_Settings.TargetTeams[pTeamName] then
-            return false -- Не скрываем, эта команда выбрана в фильтре
+            return false -- Если галочка стоит, мы НЕ считаем его тиммейтом (ESP ПОКАЗЫВАЕТ ЕГО)
         else
-            return true -- Скрываем команду, так как её чекбокс пуст
+            return true  -- Если галочки нет, считаем тиммейтом (ESP СКРЫВАЕТ ЕГО)
         end
     end
     return false
@@ -553,10 +545,7 @@ local function checkVisibility(targetPart, targetCharacter)
     local iterations = 0
     while iterations < 10 do
         local result = workspace:Raycast(origin, direction, raycastParams)
-        
-        if not result then
-            return true 
-        end
+        if not result then return true end
         
         local hitPart = result.Instance
         if hitPart.CanCollide == false or hitPart.Transparency == 1 or hitPart.Name == "HumanoidRootPart" then
@@ -567,7 +556,6 @@ local function checkVisibility(targetPart, targetCharacter)
             return false 
         end
     end
-    
     return false 
 end
 
