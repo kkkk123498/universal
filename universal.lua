@@ -116,6 +116,7 @@ Container.AutomaticCanvasSize = Enum.AutomaticSize.Y
 Container.ScrollBarThickness = 2
 Container.ScrollBarImageColor3 = Color3.fromRGB(60, 60, 60)
 Container.BorderSizePixel = 0
+Container.ClipsDescendants = true
 
 local UIListLayout = Instance.new("UIListLayout")
 UIListLayout.Parent = Container
@@ -129,7 +130,7 @@ TeamSelectFrame.Parent = MainFrame
 TeamSelectFrame.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
 TeamSelectFrame.BackgroundTransparency = 1.000
 TeamSelectFrame.Position = UDim2.new(1, 8, 0, 0)
-TeamSelectFrame.Size = UDim2.new(0, 180, 0, 320) -- Немного увеличил высоту для подписи
+TeamSelectFrame.Size = UDim2.new(0, 180, 0, 320)
 TeamSelectFrame.Image = "rbxassetid://3570695787"
 TeamSelectFrame.ImageColor3 = Color3.fromRGB(22, 22, 22)
 TeamSelectFrame.ScaleType = Enum.ScaleType.Slice
@@ -157,28 +158,18 @@ TS_Title.TextColor3 = Color3.fromRGB(240, 240, 240)
 TS_Title.TextSize = 11.000
 TS_Title.TextXAlignment = Enum.TextXAlignment.Center
 
--- Новая надпись "ДЛЯ ER:LC" под всеми командами
-local ERLC_Label = Instance.new("TextLabel")
-ERLC_Label.Parent = TeamSelectFrame
-ERLC_Label.BackgroundTransparency = 1.000
-ERLC_Label.Position = UDim2.new(0, 0, 1, -25) -- Закреплена в самом низу
-ERLC_Label.Size = UDim2.new(1, 0, 0, 20)
-ERLC_Label.Font = Enum.Font.GothamBold
-ERLC_Label.Text = "ДЛЯ ER:LC"
-ERLC_Label.TextColor3 = Color3.fromRGB(0, 170, 255)
-ERLC_Label.TextSize = 10.000
-ERLC_Label.TextXAlignment = Enum.TextXAlignment.Center
-
 local TS_Container = Instance.new("ScrollingFrame")
 TS_Container.Parent = TeamSelectFrame
 TS_Container.BackgroundTransparency = 1
 TS_Container.Position = UDim2.new(0.05, 0, 0.12, 0)
-TS_Container.Size = UDim2.new(0.9, 0, 0.74, 0) -- Высота уменьшена, чтобы не перекрывать надпись
+TS_Container.Size = UDim2.new(0.9, 0, 0.84, 0) -- Возвращен полноценный размер для идеального скролла
 TS_Container.CanvasSize = UDim2.new(0, 0, 0, 0)
 TS_Container.AutomaticCanvasSize = Enum.AutomaticSize.Y
-TS_Container.ScrollBarThickness = 2
-TS_Container.ScrollBarImageColor3 = Color3.fromRGB(60, 60, 60)
+TS_Container.ScrollBarThickness = 3
+TS_Container.ScrollBarImageColor3 = Color3.fromRGB(0, 170, 255)
 TS_Container.BorderSizePixel = 0
+TS_Container.ClipsDescendants = true
+TS_Container.Selectable = true
 
 local TS_ListLayout = Instance.new("UIListLayout")
 TS_ListLayout.Parent = TS_Container
@@ -188,13 +179,15 @@ TS_ListLayout.Padding = UDim.new(0, 5)
 -- Продвинутая функция получения вообще всех существующих названий команд в сессии
 local function updateTeamDropdown()
     for _, child in ipairs(TS_Container:GetChildren()) do
-        if child:IsA("TextButton") then child:Destroy() end
+        if child:IsA("TextButton") or child:IsA("TextLabel") or child:IsA("Frame") then 
+            child:Destroy() 
+        end
     end
 
     -- Находим уникальные имена команд
     local foundTeamNames = {}
     
-    -- Принудительно добавляем Criminals, если её еще нет в списке игр
+    -- Принудительно добавляем Criminals
     foundTeamNames["Criminals"] = true
     
     for _, team in ipairs(Teams:GetTeams()) do
@@ -214,18 +207,19 @@ local function updateTeamDropdown()
     end
     table.sort(sortedTeams)
 
-    -- Отрисовка кнопок
-    for _, teamName in ipairs(sortedTeams) do
+    -- Отрисовка кнопок команд
+    for i, teamName in ipairs(sortedTeams) do
         local tBtn = Instance.new("TextButton")
         tBtn.Parent = TS_Container
         tBtn.BackgroundColor3 = Color3.fromRGB(32, 32, 32)
         tBtn.BorderSizePixel = 0
-        tBtn.Size = UDim2.new(1, -4, 0, 28)
+        tBtn.Size = UDim2.new(1, -6, 0, 28)
         tBtn.Font = Enum.Font.GothamMedium
         tBtn.Text = "  " .. teamName
         tBtn.TextColor3 = Color3.fromRGB(220, 220, 220)
         tBtn.TextSize = 10.5
         tBtn.TextXAlignment = Enum.TextXAlignment.Left
+        tBtn.LayoutOrder = i -- Сохраняем сортировку
 
         local tCorner = Instance.new("UICorner")
         tCorner.CornerRadius = UDim.new(0, 5)
@@ -247,6 +241,25 @@ local function updateTeamDropdown()
         end)
         table.insert(_G.PlayerESP_Connections, tConn)
     end
+
+    -- Разделительный отступ перед надписью
+    local spacer = Instance.new("Frame")
+    spacer.Parent = TS_Container
+    spacer.BackgroundTransparency = 1
+    spacer.Size = UDim2.new(1, 0, 0, 4)
+    spacer.LayoutOrder = 9998
+
+    -- Надпись "ДЛЯ ER:LC" теперь находится внутри контейнера снизу и не ломает интерфейс
+    local ERLC_Label = Instance.new("TextLabel")
+    ERLC_Label.Parent = TS_Container
+    ERLC_Label.BackgroundTransparency = 1.000
+    ERLC_Label.Size = UDim2.new(1, -6, 0, 18)
+    ERLC_Label.Font = Enum.Font.GothamBold
+    ERLC_Label.Text = "ДЛЯ ER:LC"
+    ERLC_Label.TextColor3 = Color3.fromRGB(0, 170, 255)
+    ERLC_Label.TextSize = 10.000
+    ERLC_Label.TextXAlignment = Enum.TextXAlignment.Center
+    ERLC_Label.LayoutOrder = 9999
 end
 
 -- Мониторинг изменений команд и игроков
@@ -482,7 +495,6 @@ local function checkPlayerTeamName(player)
     if player.Team and player.Team.Name then
         return player.Team.Name
     end
-    -- Запасная проверка: если игра выставляет кастомные атрибуты/значения
     if player:GetAttribute("Team") then return player:GetAttribute("Team") end
     if player.Character and player.Character:GetAttribute("Team") then return player.Character:GetAttribute("Team") end
     return nil
