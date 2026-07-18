@@ -21,6 +21,7 @@ _G.PlayerESP_Highlights = {}
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local UserInputService = game:GetService("UserInputService")
+local Teams = game:GetService("Teams")
 local camera = workspace.CurrentCamera or workspace.Camera
 local localPlayer = Players.LocalPlayer
 
@@ -28,7 +29,7 @@ local ESP_Settings = {
     Enabled = true,
     TeamCheck = false,
     TeamCheckMode = 1,
-    TargetTeamName = "Criminals", -- Дефолтное значение для поля Select
+    TargetTeams = {}, -- Здесь теперь хранится таблица выбранных команд {["TeamName"] = true}
     CModelMode = false,
     CModelModeType = 1,
     Box = true,
@@ -44,7 +45,6 @@ local ESP_Settings = {
     FadeSpeed = 5 
 }
 
--- Добавили "Select" в конец списка
 local TC_Modes = {"Standard", "Attributes", "ColorMatch", "Hierarchy", "DeepSearch", "Select"}
 local CM_Modes = {"BoundingBox", "Dynamic", "Root Fallback"}
 
@@ -122,6 +122,103 @@ UIListLayout.Parent = Container
 UIListLayout.SortOrder = Enum.SortOrder.LayoutOrder
 UIListLayout.Padding = UDim.new(0, 6)
 
+-- === ДОПОЛНИТЕЛЬНОЕ МЕНЮ ВЫБОРА КОМАНД (СПРАВА) ===
+local TeamSelectFrame = Instance.new("ImageLabel")
+TeamSelectFrame.Name = "TeamSelectFrame"
+TeamSelectFrame.Parent = MainFrame -- Привязано к MainFrame, чтобы двигалось вместе
+TeamSelectFrame.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
+TeamSelectFrame.BackgroundTransparency = 1.000
+TeamSelectFrame.Position = UDim2.new(1, 8, 0, 0) -- Ровно справа с отступом 8 пикселей
+TeamSelectFrame.Size = UDim2.new(0, 180, 0, 300)
+TeamSelectFrame.Image = "rbxassetid://3570695787"
+TeamSelectFrame.ImageColor3 = Color3.fromRGB(22, 22, 22)
+TeamSelectFrame.ScaleType = Enum.ScaleType.Slice
+TeamSelectFrame.SliceCenter = Rect.new(100, 100, 100, 100)
+TeamSelectFrame.SliceScale = 0.120
+TeamSelectFrame.Visible = false
+
+local TS_Outline = Instance.new("UIStroke")
+TS_Outline.Parent = TeamSelectFrame
+TS_Outline.Color = Color3.fromRGB(0, 170, 255)
+TS_Outline.Thickness = 1.5
+TS_Outline.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+
+local TS_Corner = Instance.new("UICorner")
+TS_Corner.CornerRadius = UDim.new(0, 12)
+TS_Corner.Parent = TeamSelectFrame
+
+local TS_Title = Instance.new("TextLabel")
+TS_Title.Parent = TeamSelectFrame
+TS_Title.BackgroundTransparency = 1.000
+TS_Title.Size = UDim2.new(1, 0, 0, 35)
+TS_Title.Font = Enum.Font.GothamBold
+TS_Title.Text = "ФИЛЬТР КОМАНД"
+TS_Title.TextColor3 = Color3.fromRGB(240, 240, 240)
+TS_Title.TextSize = 11.000
+TS_Title.TextXAlignment = Enum.TextXAlignment.Center
+
+local TS_Container = Instance.new("ScrollingFrame")
+TS_Container.Parent = TeamSelectFrame
+TS_Container.BackgroundTransparency = 1
+TS_Container.Position = UDim2.new(0.05, 0, 0.12, 0)
+TS_Container.Size = UDim2.new(0.9, 0, 0.84, 0)
+TS_Container.CanvasSize = UDim2.new(0, 0, 0, 0)
+TS_Container.AutomaticCanvasSize = Enum.AutomaticSize.Y
+TS_Container.ScrollBarThickness = 2
+TS_Container.ScrollBarImageColor3 = Color3.fromRGB(60, 60, 60)
+TS_Container.BorderSizePixel = 0
+
+local TS_ListLayout = Instance.new("UIListLayout")
+TS_ListLayout.Parent = TS_Container
+TS_ListLayout.SortOrder = Enum.SortOrder.LayoutOrder
+TS_ListLayout.Padding = UDim.new(0, 5)
+
+-- Функция обновления списка команд в выпадающем меню
+local function updateTeamDropdown()
+    for _, child in ipairs(TS_Container:GetChildren()) do
+        if child:IsA("TextButton") then child:Destroy() end
+    end
+
+    for _, team in ipairs(Teams:GetTeams()) do
+        local tBtn = Instance.new("TextButton")
+        tBtn.Parent = TS_Container
+        tBtn.BackgroundColor3 = Color3.fromRGB(32, 32, 32)
+        tBtn.BorderSizePixel = 0
+        tBtn.Size = UDim2.new(1, -4, 0, 28)
+        tBtn.Font = Enum.Font.GothamMedium
+        tBtn.Text = "  " .. team.Name
+        tBtn.TextColor3 = Color3.fromRGB(220, 220, 220)
+        tBtn.TextSize = 10.5
+        tBtn.TextXAlignment = Enum.TextXAlignment.Left
+
+        local tCorner = Instance.new("UICorner")
+        tCorner.CornerRadius = UDim.new(0, 5)
+        tCorner.Parent = tBtn
+
+        -- Квадратик-индикатор выбора
+        local checkbox = Instance.new("Frame")
+        checkbox.Parent = tBtn
+        checkbox.Position = UDim2.new(0.84, 0, 0.25, 0)
+        checkbox.Size = UDim2.new(0, 14, 0, 14)
+        checkbox.BackgroundColor3 = ESP_Settings.TargetTeams[team.Name] and Color3.fromRGB(0, 170, 255) or Color3.fromRGB(50, 50, 50)
+        
+        local cCorner = Instance.new("UICorner")
+        cCorner.CornerRadius = UDim.new(0, 4)
+        cCorner.Parent = checkbox
+
+        local tConn = tBtn.MouseButton1Click:Connect(function()
+            ESP_Settings.TargetTeams[team.Name] = not ESP_Settings.TargetTeams[team.Name]
+            checkbox.BackgroundColor3 = ESP_Settings.TargetTeams[team.Name] and Color3.fromRGB(0, 170, 255) or Color3.fromRGB(50, 50, 50)
+        end)
+        table.insert(_G.PlayerESP_Connections, tConn)
+    end
+end
+
+-- Авто-обновление интерфейса при изменении команд на сервере
+table.insert(_G.PlayerESP_Connections, Teams.ChildAdded:Connect(updateTeamDropdown))
+table.insert(_G.PlayerESP_Connections, Teams.ChildRemoved:Connect(updateTeamDropdown))
+
+
 local function drag(GuiObj)
 	local dragToggle, dragInput, dragStart, startPos
 	local conn1 = GuiObj.InputBegan:Connect(function(input)
@@ -183,7 +280,6 @@ local function createToggle(name, settingKey)
     table.insert(_G.PlayerESP_Connections, conn)
 end
 
--- Добавлен параметр callback для динамического обновления UI
 local function createModeCycle(name, settingKey, optionsArray, callback)
     local btn = Instance.new("TextButton")
     btn.Parent = Container
@@ -207,7 +303,6 @@ local function createModeCycle(name, settingKey, optionsArray, callback)
         ESP_Settings[settingKey] = current
         btn.Text = "  " .. name .. ": " .. optionsArray[current]
         
-        -- Вызываем коллбэк, если он есть
         if callback then callback(current) end
     end)
     table.insert(_G.PlayerESP_Connections, conn)
@@ -263,70 +358,22 @@ local function createInputField(name, settingKey, min, max, isFloat)
     table.insert(_G.PlayerESP_Connections, conn)
 end
 
--- Функция для создания текстового поля (для ввода названия команды)
-local function createStringField(name, settingKey)
-    local frame = Instance.new("Frame")
-    frame.Parent = Container
-    frame.BackgroundColor3 = Color3.fromRGB(32, 32, 32)
-    frame.BorderSizePixel = 0
-    frame.Size = UDim2.new(1, -5, 0, 35)
-    
-    local corner = Instance.new("UICorner")
-    corner.CornerRadius = UDim.new(0, 6)
-    corner.Parent = frame
-    
-    local title = Instance.new("TextLabel")
-    title.Parent = frame
-    title.BackgroundTransparency = 1
-    title.Position = UDim2.new(0, 10, 0, 0)
-    title.Size = UDim2.new(0.45, 0, 1, 0)
-    title.Font = Enum.Font.GothamMedium
-    title.Text = name
-    title.TextColor3 = Color3.fromRGB(210, 210, 210)
-    title.TextSize = 11.5
-    title.TextXAlignment = Enum.TextXAlignment.Left
-    
-    local input = Instance.new("TextBox")
-    input.Parent = frame
-    input.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
-    input.BorderSizePixel = 0
-    input.Position = UDim2.new(0.45, 0, 0.15, 0)
-    input.Size = UDim2.new(0.5, 0, 0.7, 0)
-    input.Font = Enum.Font.Gotham
-    input.Text = ESP_Settings[settingKey]
-    input.TextColor3 = Color3.fromRGB(255, 255, 255)
-    input.TextSize = 11
-    input.ClipsDescendants = true
-    input.ClearTextOnFocus = false
-    
-    local inputCorner = Instance.new("UICorner")
-    inputCorner.CornerRadius = UDim.new(0, 4)
-    inputCorner.Parent = input
-    
-    local conn = input.FocusLost:Connect(function()
-        ESP_Settings[settingKey] = input.Text
-    end)
-    table.insert(_G.PlayerESP_Connections, conn)
-    
-    return frame
-end
-
 createToggle("Master Switch", "Enabled")
 createToggle("Team Check", "TeamCheck")
 
--- Заранее объявляем переменную поля, чтобы менять её видимость
-local targetTeamField 
-
 createModeCycle("TC Mode", "TeamCheckMode", TC_Modes, function(currentIndex)
-    -- Показываем поле ввода только если выбран "Select" (индекс 6)
-    if targetTeamField then
-        targetTeamField.Visible = (currentIndex == 6)
+    -- Показываем меню выбора команд только если выбран режим "Select" (индекс 6)
+    if TeamSelectFrame then
+        TeamSelectFrame.Visible = (currentIndex == 6)
+        if currentIndex == 6 then
+            updateTeamDropdown()
+        end
     end
 end)
 
--- Создаем само текстовое поле
-targetTeamField = createStringField("Team Name", "TargetTeamName")
-targetTeamField.Visible = (ESP_Settings.TeamCheckMode == 6) -- Скрыто по умолчанию
+-- Инициализируем начальную видимость правого меню
+TeamSelectFrame.Visible = (ESP_Settings.TeamCheckMode == 6)
+if ESP_Settings.TeamCheckMode == 6 then updateTeamDropdown() end
 
 createToggle("CModel Mode", "CModelMode")
 createModeCycle("CM Mode", "CModelModeType", CM_Modes)
@@ -424,11 +471,11 @@ local function isTeammateCheck(player, character)
             if character.Parent == lpChar.Parent and character.Parent ~= workspace then return true end
         end
     elseif mode == 6 then
-        -- РЕЖИМ SELECT: Показываем только тех, чья команда совпадает с TargetTeamName
-        if player.Team and string.lower(player.Team.Name) == string.lower(ESP_Settings.TargetTeamName) then
-            return false -- Не скрываем (считаем их "врагами")
+        -- РЕЖИМ SELECT (Мульти-выбор): Показываем только тех игроков, чья команда активирована в списке TargetTeams
+        if player.Team and ESP_Settings.TargetTeams[player.Team.Name] then
+            return false -- Не скрываем (это цель для ESP)
         else
-            return true -- Скрываем (считаем их "своими")
+            return true -- Скрываем (игрок не в выбранной команде)
         end
     end
     return false
@@ -448,22 +495,20 @@ local function checkVisibility(targetPart, targetCharacter)
     raycastParams.FilterDescendantsInstances = ignoreList
     
     local iterations = 0
-    -- Ограничиваем цикл максимум 10 слоями, чтобы избежать фризов игры
     while iterations < 10 do
         local result = workspace:Raycast(origin, direction, raycastParams)
         
         if not result then
-            return true -- Преград нет
+            return true 
         end
         
         local hitPart = result.Instance
-        -- Если объект прозрачный, не имеет коллизии или это часть хитбокса
         if hitPart.CanCollide == false or hitPart.Transparency == 1 or hitPart.Name == "HumanoidRootPart" then
             table.insert(ignoreList, hitPart)
             raycastParams.FilterDescendantsInstances = ignoreList
             iterations = iterations + 1
         else
-            return false -- Твердая преграда
+            return false 
         end
     end
     
@@ -576,7 +621,6 @@ local renderConn = RunService.RenderStepped:Connect(function(deltaTime)
                         legPos = rootPos - Vector3.new(0, heightY * 0.5, 0)
                     end
                 elseif cmMode == 2 then
-                    -- Оптимизированный Dynamic-поиск высоты (меньше лагов)
                     local root = character.PrimaryPart or hrp
                     if not root then shouldShow = false else
                         rootPos = root.Position
@@ -618,7 +662,6 @@ local renderConn = RunService.RenderStepped:Connect(function(deltaTime)
             if not onScreen then shouldShow = false end
         end
 
-        -- Плавное и правильное затухание
         if shouldShow then
             data.FadeAlpha = math.clamp(data.FadeAlpha + (deltaTime * ESP_Settings.FadeSpeed), 0, 1)
         else
