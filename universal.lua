@@ -125,10 +125,10 @@ UIListLayout.Padding = UDim.new(0, 6)
 -- === ДОПОЛНИТЕЛЬНОЕ МЕНЮ ВЫБОРА КОМАНД (СПРАВА) ===
 local TeamSelectFrame = Instance.new("ImageLabel")
 TeamSelectFrame.Name = "TeamSelectFrame"
-TeamSelectFrame.Parent = MainFrame -- Привязано к MainFrame, чтобы двигалось вместе
+TeamSelectFrame.Parent = MainFrame 
 TeamSelectFrame.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
 TeamSelectFrame.BackgroundTransparency = 1.000
-TeamSelectFrame.Position = UDim2.new(1, 8, 0, 0) -- Ровно справа с отступом 8 пикселей
+TeamSelectFrame.Position = UDim2.new(1, 8, 0, 0) 
 TeamSelectFrame.Size = UDim2.new(0, 180, 0, 300)
 TeamSelectFrame.Image = "rbxassetid://3570695787"
 TeamSelectFrame.ImageColor3 = Color3.fromRGB(22, 22, 22)
@@ -175,10 +175,14 @@ TS_ListLayout.Padding = UDim.new(0, 5)
 
 -- Функция обновления списка команд в выпадающем меню
 local function updateTeamDropdown()
+    -- Очищаем все элементы (кнопки, лейблы, отступы), кроме Layout
     for _, child in ipairs(TS_Container:GetChildren()) do
-        if child:IsA("TextButton") then child:Destroy() end
+        if child:IsA("TextButton") or child:IsA("TextLabel") or (child:IsA("Frame") and child.Name == "Spacer") then 
+            child:Destroy() 
+        end
     end
 
+    -- Стандартные команды
     for _, team in ipairs(Teams:GetTeams()) do
         local tBtn = Instance.new("TextButton")
         tBtn.Parent = TS_Container
@@ -195,7 +199,6 @@ local function updateTeamDropdown()
         tCorner.CornerRadius = UDim.new(0, 5)
         tCorner.Parent = tBtn
 
-        -- Квадратик-индикатор выбора
         local checkbox = Instance.new("Frame")
         checkbox.Parent = tBtn
         checkbox.Position = UDim2.new(0.84, 0, 0.25, 0)
@@ -212,12 +215,65 @@ local function updateTeamDropdown()
         end)
         table.insert(_G.PlayerESP_Connections, tConn)
     end
+
+    -- === ДОПОЛНЕНИЕ ДЛЯ ER:LC ===
+    local spacer = Instance.new("Frame")
+    spacer.Name = "Spacer"
+    spacer.Parent = TS_Container
+    spacer.BackgroundTransparency = 1
+    spacer.Size = UDim2.new(1, 0, 0, 8)
+
+    local erlcLabel = Instance.new("TextLabel")
+    erlcLabel.Parent = TS_Container
+    erlcLabel.BackgroundTransparency = 1
+    erlcLabel.Size = UDim2.new(1, 0, 0, 18)
+    erlcLabel.Font = Enum.Font.GothamBold
+    erlcLabel.Text = "ДЛЯ ER:LC"
+    erlcLabel.TextColor3 = Color3.fromRGB(255, 170, 0)
+    erlcLabel.TextSize = 11.000
+    erlcLabel.TextXAlignment = Enum.TextXAlignment.Center
+
+    local crimBtn = Instance.new("TextButton")
+    crimBtn.Parent = TS_Container
+    crimBtn.BackgroundColor3 = Color3.fromRGB(32, 32, 32)
+    crimBtn.BorderSizePixel = 0
+    crimBtn.Size = UDim2.new(1, -4, 0, 28)
+    crimBtn.Font = Enum.Font.GothamMedium
+    crimBtn.Text = "  Criminals (Forced)"
+    crimBtn.TextColor3 = Color3.fromRGB(220, 220, 220)
+    crimBtn.TextSize = 10.5
+    crimBtn.TextXAlignment = Enum.TextXAlignment.Left
+
+    local crimCorner = Instance.new("UICorner")
+    crimCorner.CornerRadius = UDim.new(0, 5)
+    crimCorner.Parent = crimBtn
+
+    local crimCheckbox = Instance.new("Frame")
+    crimCheckbox.Parent = crimBtn
+    crimCheckbox.Position = UDim2.new(0.84, 0, 0.25, 0)
+    crimCheckbox.Size = UDim2.new(0, 14, 0, 14)
+    
+    -- Проверка активности (если включена хотя бы одна из вариаций)
+    local isCrimActive = ESP_Settings.TargetTeams["Criminals"] or ESP_Settings.TargetTeams["Criminal"]
+    crimCheckbox.BackgroundColor3 = isCrimActive and Color3.fromRGB(0, 170, 255) or Color3.fromRGB(50, 50, 50)
+    
+    local cCorner2 = Instance.new("UICorner")
+    cCorner2.CornerRadius = UDim.new(0, 4)
+    cCorner2.Parent = crimCheckbox
+
+    local cConn = crimBtn.MouseButton1Click:Connect(function()
+        isCrimActive = not isCrimActive
+        -- Включаем сразу оба ключа для надежности
+        ESP_Settings.TargetTeams["Criminals"] = isCrimActive
+        ESP_Settings.TargetTeams["Criminal"] = isCrimActive
+        crimCheckbox.BackgroundColor3 = isCrimActive and Color3.fromRGB(0, 170, 255) or Color3.fromRGB(50, 50, 50)
+    end)
+    table.insert(_G.PlayerESP_Connections, cConn)
 end
 
 -- Авто-обновление интерфейса при изменении команд на сервере
 table.insert(_G.PlayerESP_Connections, Teams.ChildAdded:Connect(updateTeamDropdown))
 table.insert(_G.PlayerESP_Connections, Teams.ChildRemoved:Connect(updateTeamDropdown))
-
 
 local function drag(GuiObj)
 	local dragToggle, dragInput, dragStart, startPos
@@ -362,7 +418,6 @@ createToggle("Master Switch", "Enabled")
 createToggle("Team Check", "TeamCheck")
 
 createModeCycle("TC Mode", "TeamCheckMode", TC_Modes, function(currentIndex)
-    -- Показываем меню выбора команд только если выбран режим "Select" (индекс 6)
     if TeamSelectFrame then
         TeamSelectFrame.Visible = (currentIndex == 6)
         if currentIndex == 6 then
@@ -371,7 +426,6 @@ createModeCycle("TC Mode", "TeamCheckMode", TC_Modes, function(currentIndex)
     end
 end)
 
--- Инициализируем начальную видимость правого меню
 TeamSelectFrame.Visible = (ESP_Settings.TeamCheckMode == 6)
 if ESP_Settings.TeamCheckMode == 6 then updateTeamDropdown() end
 
@@ -471,11 +525,12 @@ local function isTeammateCheck(player, character)
             if character.Parent == lpChar.Parent and character.Parent ~= workspace then return true end
         end
     elseif mode == 6 then
-        -- РЕЖИМ SELECT (Мульти-выбор): Показываем только тех игроков, чья команда активирована в списке TargetTeams
-        if player.Team and ESP_Settings.TargetTeams[player.Team.Name] then
-            return false -- Не скрываем (это цель для ESP)
+        -- Адаптированная логика: проверяем текстовое значение названия команды
+        local tName = player.Team and player.Team.Name or ""
+        if ESP_Settings.TargetTeams[tName] then
+            return false -- Не скрываем (нашли совпадение, включая кастомный криминал)
         else
-            return true -- Скрываем (игрок не в выбранной команде)
+            return true -- Скрываем
         end
     end
     return false
