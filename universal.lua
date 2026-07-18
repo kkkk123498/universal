@@ -36,6 +36,7 @@ local ESP_Settings = {
     NameInfo = true,
     HealthBar = true,
     Chams = false,
+    ChamsMode = 1, -- 1: Highlight, 2: Adornments (Custom Parts)
     WallCheck = false,
     Tracers = true,            
     TracerThickness = 1,       
@@ -85,7 +86,7 @@ MainFrame.Parent = ESP_GUI
 MainFrame.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
 MainFrame.BackgroundTransparency = 1.000
 MainFrame.Position = UDim2.new(0.6, 0, 0.3, 0)
-MainFrame.Size = UDim2.new(0, 210, 0, 480) -- Увеличили под новое поле
+MainFrame.Size = UDim2.new(0, 210, 0, 480)
 MainFrame.Image = "rbxassetid://3570695787"
 MainFrame.ImageColor3 = Color3.fromRGB(22, 22, 22)
 MainFrame.ScaleType = Enum.ScaleType.Slice
@@ -512,7 +513,12 @@ createToggle("Wall Check", "WallCheck")
 createToggle("Show Boxes", "Box")
 createToggle("Name & Distance", "NameInfo")
 createToggle("Health Bar", "HealthBar")
+
 createToggle("Chams", "Chams")
+-- Добавляем переключатель режимов Chams
+local Chams_ModesArray = {"Highlight", "Adornments (Custom)"}
+createModeCycle("Chams Mode", "ChamsMode", Chams_ModesArray)
+
 createInputField("Chams Fill %", "ChamsFillAlpha", 0, 1, true)
 createInputField("Chams Outline %", "ChamsOutlineAlpha", 0, 1, true)
 createToggle("Tracers", "Tracers")
@@ -542,7 +548,7 @@ spaceBeforeFriend.Size = UDim2.new(1, 0, 0, 4)
 -- Поле ввода "Добавить друга"
 local friendFrame = Instance.new("Frame")
 friendFrame.Parent = Container
-friendFrame.BackgroundColor3 = Color3.fromRGB(28, 40, 28) -- Зеленоватый оттенок для отличия
+friendFrame.BackgroundColor3 = Color3.fromRGB(28, 40, 28)
 friendFrame.BorderSizePixel = 0
 friendFrame.Size = UDim2.new(1, -5, 0, 35)
 
@@ -767,6 +773,11 @@ local function hideESP(data)
     data.HealthBarBG.Visible = false
     data.Tracer.Visible = false
     if data.Chams then data.Chams.Enabled = false end
+    
+    -- Очистка кастомных чамсов
+    if data.Adornments then
+        for _, adorn in pairs(data.Adornments) do adorn.Visible = false end
+    end
 end
 
 local function getTeamColor(player)
@@ -870,6 +881,9 @@ local function createESP(player)
     data.Chams.Enabled = false
     data.Chams.Parent = ESP_GUI
     table.insert(_G.PlayerESP_Highlights, data.Chams)
+    
+    -- Хранилище для кастомных партов
+    data.Adornments = {}
 
     return data
 end
@@ -930,6 +944,25 @@ local renderConn = RunService.RenderStepped:Connect(function(deltaTime)
         local rootPos, headPos, legPos, targetPart
         local hum = character and character:FindFirstChildOfClass("Humanoid") or nil
 
+        -- Фикс залипания ESP на трупах и кастомных моделях
+        local isAlive = true
+        if not character or not character:IsDescendantOf(workspace) then 
+            isAlive = false 
+        end
+        if hum and hum.Health <= 0 then 
+            isAlive = false 
+        end
+        -- Если у модели нет основных частей, считаем мертвой (полезно для Operation One)
+        if isAlive and not character:FindFirstChild("HumanoidRootPart") and not character.PrimaryPart then
+            isAlive = false
+        end
+
+        if not isAlive then 
+            shouldShow = false
+            data.FadeAlpha = 0 -- Моментально убираем прозрачность
+            hideESP(data)      -- Принудительно прячем
+        end
+
         if shouldShow then
             local hrp = character:FindFirstChild("HumanoidRootPart")
             if ESP_Settings.CModelMode then
@@ -977,8 +1010,6 @@ local renderConn = RunService.RenderStepped:Connect(function(deltaTime)
             end
         end
 
-        if hum and hum.Health <= 0 then shouldShow = false end
-
         local vector, onScreen = nil, false
         if shouldShow and rootPos then
             vector, onScreen = camera:WorldToViewportPoint(rootPos)
@@ -1002,7 +1033,7 @@ local renderConn = RunService.RenderStepped:Connect(function(deltaTime)
             local activeChamsColor = Color3.fromRGB(255, 50, 50)
 
             if isFriend then
-                activeBoxColor = Color3.fromRGB(50, 255, 50) -- Салатовый
+                activeBoxColor = Color3.fromRGB(50, 255, 50)
                 activeChamsColor = Color3.fromRGB(50, 255, 50)
             elseif ESP_Settings.WallCheck then
                 if isVisible then
@@ -1018,14 +1049,57 @@ local renderConn = RunService.RenderStepped:Connect(function(deltaTime)
             data.HealthBar.Transparency = data.FadeAlpha
             data.HealthBarBG.Transparency = data.FadeAlpha
 
-            if ESP_Settings.Chams or isFriend then -- У друзей чамсы горят всегда
-                if data.Chams.Adornee ~= character then data.Chams.Adornee = character end
-                data.Chams.FillColor = activeChamsColor
-                data.Chams.FillTransparency = ESP_Settings.ChamsFillAlpha + ((1 - ESP_Settings.ChamsFillAlpha) * (1 - data.FadeAlpha))
-                data.Chams.OutlineTransparency = ESP_Settings.ChamsOutlineAlpha + ((1 - ESP_Settings.ChamsOutlineAlpha) * (1 - data.FadeAlpha))
-                data.Chams.Enabled = true
+            -- Новая логика Chams
+            if ESP_Settings.Chams or isFriend then 
+                if ESP_Settings.ChamsMode == 1 then
+                    -- Стандартный Highlight
+                    if data.Chams.Adornee ~= character then data.Chams.Adornee = character end
+                    data.Chams.FillColor = activeChamsColor
+                    data.Chams.FillTransparency = ESP_Settings.ChamsFillAlpha + ((1 - ESP_Settings.ChamsFillAlpha) * (1 - data.FadeAlpha))
+                    data.Chams.OutlineTransparency = ESP_Settings.ChamsOutlineAlpha + ((1 - ESP_Settings.ChamsOutlineAlpha) * (1 - data.FadeAlpha))
+                    data.Chams.Enabled = true
+                    
+                    -- Выключаем кастомные чамсы, если режим переключен
+                    for _, adorn in pairs(data.Adornments) do adorn.Visible = false end
+                else
+                    -- Кастомные модели (Adornments)
+                    data.Chams.Enabled = false
+                    
+                    for _, part in pairs(character:GetChildren()) do
+                        if part:IsA("BasePart") then
+                            if not data.Adornments[part] then
+                                local box = Instance.new("BoxHandleAdornment")
+                                box.Size = part.Size + Vector3.new(0.05, 0.05, 0.05)
+                                box.Adornee = part
+                                box.AlwaysOnTop = true
+                                box.ZIndex = 5
+                                box.Transparency = ESP_Settings.ChamsFillAlpha + ((1 - ESP_Settings.ChamsFillAlpha) * (1 - data.FadeAlpha))
+                                box.Color3 = activeChamsColor
+                                box.Parent = ESP_GUI
+                                data.Adornments[part] = box
+                                table.insert(_G.PlayerESP_Highlights, box)
+                            else
+                                local box = data.Adornments[part]
+                                box.Size = part.Size + Vector3.new(0.05, 0.05, 0.05)
+                                box.Transparency = ESP_Settings.ChamsFillAlpha + ((1 - ESP_Settings.ChamsFillAlpha) * (1 - data.FadeAlpha))
+                                box.Color3 = activeChamsColor
+                                box.Visible = true
+                            end
+                        end
+                    end
+                    
+                    -- Убираем парты, которые были уничтожены (например, при расчленении)
+                    for part, box in pairs(data.Adornments) do
+                        if not part or part.Parent ~= character then
+                            box.Visible = false
+                            box:Destroy()
+                            data.Adornments[part] = nil
+                        end
+                    end
+                end
             else
                 data.Chams.Enabled = false
+                for _, adorn in pairs(data.Adornments) do adorn.Visible = false end
             end
 
             if vector and headPos and legPos then
