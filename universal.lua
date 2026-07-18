@@ -129,7 +129,7 @@ TeamSelectFrame.Parent = MainFrame
 TeamSelectFrame.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
 TeamSelectFrame.BackgroundTransparency = 1.000
 TeamSelectFrame.Position = UDim2.new(1, 8, 0, 0)
-TeamSelectFrame.Size = UDim2.new(0, 180, 0, 300)
+TeamSelectFrame.Size = UDim2.new(0, 180, 0, 320) -- Немного увеличил высоту для подписи
 TeamSelectFrame.Image = "rbxassetid://3570695787"
 TeamSelectFrame.ImageColor3 = Color3.fromRGB(22, 22, 22)
 TeamSelectFrame.ScaleType = Enum.ScaleType.Slice
@@ -157,11 +157,23 @@ TS_Title.TextColor3 = Color3.fromRGB(240, 240, 240)
 TS_Title.TextSize = 11.000
 TS_Title.TextXAlignment = Enum.TextXAlignment.Center
 
+-- Новая надпись "ДЛЯ ER:LC" под всеми командами
+local ERLC_Label = Instance.new("TextLabel")
+ERLC_Label.Parent = TeamSelectFrame
+ERLC_Label.BackgroundTransparency = 1.000
+ERLC_Label.Position = UDim2.new(0, 0, 1, -25) -- Закреплена в самом низу
+ERLC_Label.Size = UDim2.new(1, 0, 0, 20)
+ERLC_Label.Font = Enum.Font.GothamBold
+ERLC_Label.Text = "ДЛЯ ER:LC"
+ERLC_Label.TextColor3 = Color3.fromRGB(0, 170, 255)
+ERLC_Label.TextSize = 10.000
+ERLC_Label.TextXAlignment = Enum.TextXAlignment.Center
+
 local TS_Container = Instance.new("ScrollingFrame")
 TS_Container.Parent = TeamSelectFrame
 TS_Container.BackgroundTransparency = 1
 TS_Container.Position = UDim2.new(0.05, 0, 0.12, 0)
-TS_Container.Size = UDim2.new(0.9, 0, 0.84, 0)
+TS_Container.Size = UDim2.new(0.9, 0, 0.74, 0) -- Высота уменьшена, чтобы не перекрывать надпись
 TS_Container.CanvasSize = UDim2.new(0, 0, 0, 0)
 TS_Container.AutomaticCanvasSize = Enum.AutomaticSize.Y
 TS_Container.ScrollBarThickness = 2
@@ -179,8 +191,11 @@ local function updateTeamDropdown()
         if child:IsA("TextButton") then child:Destroy() end
     end
 
-    -- Находим уникальные имена команд (как из сервиса Teams, так и напрямую от игроков)
+    -- Находим уникальные имена команд
     local foundTeamNames = {}
+    
+    -- Принудительно добавляем Criminals, если её еще нет в списке игр
+    foundTeamNames["Criminals"] = true
     
     for _, team in ipairs(Teams:GetTeams()) do
         foundTeamNames[team.Name] = true
@@ -192,7 +207,7 @@ local function updateTeamDropdown()
         end
     end
 
-    -- Сортируем список по алфавиту для красоты
+    -- Сортируем список по алфавиту
     local sortedTeams = {}
     for teamName, _ in pairs(foundTeamNames) do
         table.insert(sortedTeams, teamName)
@@ -200,7 +215,7 @@ local function updateTeamDropdown()
     table.sort(sortedTeams)
 
     -- Отрисовка кнопок
-    for _, teamName do
+    for _, teamName in ipairs(sortedTeams) do
         local tBtn = Instance.new("TextButton")
         tBtn.Parent = TS_Container
         tBtn.BackgroundColor3 = Color3.fromRGB(32, 32, 32)
@@ -462,6 +477,17 @@ local function getTeamColor(player)
 	return Color3.new(1, 1, 1)
 end
 
+-- Внутренняя сверка имени команды или кастомного параметра игрока в ER:LC
+local function checkPlayerTeamName(player)
+    if player.Team and player.Team.Name then
+        return player.Team.Name
+    end
+    -- Запасная проверка: если игра выставляет кастомные атрибуты/значения
+    if player:GetAttribute("Team") then return player:GetAttribute("Team") end
+    if player.Character and player.Character:GetAttribute("Team") then return player.Character:GetAttribute("Team") end
+    return nil
+end
+
 local function isTeammateCheck(player, character)
     if player == localPlayer then return true end
     local mode = ESP_Settings.TeamCheckMode
@@ -489,10 +515,11 @@ local function isTeammateCheck(player, character)
             if character.Parent == lpChar.Parent and character.Parent ~= workspace then return true end
         end
     elseif mode == 6 then
-        if player.Team and ESP_Settings.TargetTeams[player.Team.Name] then
-            return false
+        local pTeamName = checkPlayerTeamName(player)
+        if pTeamName and ESP_Settings.TargetTeams[pTeamName] then
+            return false -- Не скрываем, эта команда выбрана в фильтре
         else
-            return true
+            return true -- Скрываем команду, так как её чекбокс пуст
         end
     end
     return false
