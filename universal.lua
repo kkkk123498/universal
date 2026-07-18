@@ -47,8 +47,15 @@ local ESP_Settings = {
     Fly = false,
     FlySpeed = 1,
     WalkSpeedEnabled = false,
-    WalkSpeed = 16
+    WalkSpeed = 16,
+    -- Бинды
+    NoclipKey = "NONE",
+    FlyKey = "NONE"
 }
+
+-- Переменные для отслеживания процесса бинда
+local bindingFor = nil -- может быть "NoclipKey" или "FlyKey"
+local bindButtons = {}
 
 local TC_Modes = {"Standard", "Attributes", "ColorMatch", "Hierarchy", "DeepSearch", "Select"}
 local CM_Modes = {"BoundingBox", "Dynamic", "Root Fallback"}
@@ -72,7 +79,7 @@ MainFrame.Parent = ESP_GUI
 MainFrame.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
 MainFrame.BackgroundTransparency = 1.000
 MainFrame.Position = UDim2.new(0.6, 0, 0.3, 0)
-MainFrame.Size = UDim2.new(0, 210, 0, 420)
+MainFrame.Size = UDim2.new(0, 210, 0, 450) -- Немного увеличили высоту для биндов
 MainFrame.Image = "rbxassetid://3570695787"
 MainFrame.ImageColor3 = Color3.fromRGB(22, 22, 22)
 MainFrame.ScaleType = Enum.ScaleType.Slice
@@ -127,7 +134,7 @@ UIListLayout.Parent = Container
 UIListLayout.SortOrder = Enum.SortOrder.LayoutOrder
 UIListLayout.Padding = UDim.new(0, 6)
 
--- === ДОПОЛНИТЕЛЬНОЕ МЕНЮ ВЫБОРА КОМАНД ===
+-- Дополнительное меню выбора команд
 local TeamSelectFrame = Instance.new("ImageLabel")
 TeamSelectFrame.Name = "TeamSelectFrame"
 TeamSelectFrame.Parent = MainFrame 
@@ -302,6 +309,9 @@ local function drag(GuiObj)
 end
 drag(MainFrame)
 
+-- Таблица для обновления визуального статуса обычных тогглов снаружи
+local toggleVisuals = {}
+
 local function createToggle(name, settingKey)
     local btn = Instance.new("TextButton")
     btn.Parent = Container
@@ -327,11 +337,19 @@ local function createToggle(name, settingKey)
     scorr.CornerRadius = UDim.new(1, 0)
     scorr.Parent = status
 
+    toggleVisuals[settingKey] = status
+
     local conn = btn.MouseButton1Click:Connect(function()
         ESP_Settings[settingKey] = not ESP_Settings[settingKey]
         status.BackgroundColor3 = ESP_Settings[settingKey] and Color3.fromRGB(0, 200, 100) or Color3.fromRGB(180, 40, 40)
     end)
     table.insert(_G.PlayerESP_Connections, conn)
+end
+
+local function updateToggleVisual(settingKey)
+    if toggleVisuals[settingKey] then
+        toggleVisuals[settingKey].BackgroundColor3 = ESP_Settings[settingKey] and Color3.fromRGB(0, 200, 100) or Color3.fromRGB(180, 40, 40)
+    end
 end
 
 local function createModeCycle(name, settingKey, optionsArray, callback)
@@ -412,6 +430,62 @@ local function createInputField(name, settingKey, min, max, isFloat)
     table.insert(_G.PlayerESP_Connections, conn)
 end
 
+local function createKeybindField(name, settingKey)
+    local btn = Instance.new("TextButton")
+    btn.Parent = Container
+    btn.BackgroundColor3 = Color3.fromRGB(38, 38, 38)
+    btn.BorderSizePixel = 0
+    btn.Size = UDim2.new(1, -5, 0, 28)
+    btn.Font = Enum.Font.GothamMedium
+    btn.Text = "  " .. name .. ": [" .. tostring(ESP_Settings[settingKey]) .. "]"
+    btn.TextColor3 = Color3.fromRGB(200, 200, 200)
+    btn.TextSize = 10.5
+    btn.TextXAlignment = Enum.TextXAlignment.Left
+
+    local corner = Instance.new("UICorner")
+    corner.CornerRadius = UDim.new(0, 6)
+    corner.Parent = btn
+
+    bindButtons[settingKey] = btn
+
+    local conn = btn.MouseButton1Click:Connect(function()
+        bindingFor = settingKey
+        btn.Text = "  " .. name .. ": [...]"
+        btn.TextColor3 = Color3.fromRGB(0, 170, 255)
+    end)
+    table.insert(_G.PlayerESP_Connections, conn)
+end
+
+-- Внешний слушатель для назначения биндов
+local globalBindConn = UserInputService.InputBegan:Connect(function(input, processed)
+    if bindingFor and not processed then
+        if input.UserInputType == Enum.UserInputType.Keyboard then
+            local keyName = input.KeyCode.Name
+            ESP_Settings[bindingFor] = keyName
+            
+            local displayName = (bindingFor == "NoclipKey") and "Bind Noclip" or "Bind Fly"
+            if bindButtons[bindingFor] then
+                bindButtons[bindingFor].Text = "  " .. displayName .. ": [" .. keyName .. "]"
+                bindButtons[bindingFor].TextColor3 = Color3.fromRGB(200, 200, 200)
+            end
+            bindingFor = nil
+        end
+    elseif not bindingFor and not processed then
+        -- Проверка нажатия клавиш-биндов для активации
+        if input.UserInputType == Enum.UserInputType.Keyboard then
+            local keyName = input.KeyCode.Name
+            if keyName == ESP_Settings.NoclipKey and ESP_Settings.NoclipKey ~= "NONE" then
+                ESP_Settings.Noclip = not ESP_Settings.Noclip
+                updateToggleVisual("Noclip")
+            elseif keyName == ESP_Settings.FlyKey and ESP_Settings.FlyKey ~= "NONE" then
+                ESP_Settings.Fly = not ESP_Settings.Fly
+                updateToggleVisual("Fly")
+            end
+        end
+    end
+end)
+table.insert(_G.PlayerESP_Connections, globalBindConn)
+
 -- === СОЗДАНИЕ КНОПОК МЕНЮ ===
 createToggle("Master Switch", "Enabled")
 createToggle("Team Check", "TeamCheck")
@@ -447,8 +521,11 @@ extraSpacer.BackgroundTransparency = 1
 extraSpacer.Size = UDim2.new(1, 0, 0, 5)
 
 createToggle("Noclip", "Noclip")
+createKeybindField("Bind Noclip", "NoclipKey")
+
 createToggle("Fly", "Fly")
 createInputField("Fly Speed", "FlySpeed", 0.1, 50, true)
+createKeybindField("Bind Fly", "FlyKey")
 
 createToggle("WalkSpeed", "WalkSpeedEnabled")
 createInputField("Speed Value", "WalkSpeed", 0, 500, true)
