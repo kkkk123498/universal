@@ -28,6 +28,7 @@ local ESP_Settings = {
     Enabled = true,
     TeamCheck = false,
     TeamCheckMode = 1,
+    TargetTeamName = "Criminals", -- Дефолтное значение для поля Select
     CModelMode = false,
     CModelModeType = 1,
     Box = true,
@@ -40,10 +41,11 @@ local ESP_Settings = {
     TracerTransparency = 0.2,   
     ChamsFillAlpha = 0.5,
     ChamsOutlineAlpha = 0.2,
-    FadeSpeed = 5 -- Увеличина скорость для большей плавности
+    FadeSpeed = 5 
 }
 
-local TC_Modes = {"Standard", "Attributes", "ColorMatch", "Hierarchy", "DeepSearch"}
+-- Добавили "Select" в конец списка
+local TC_Modes = {"Standard", "Attributes", "ColorMatch", "Hierarchy", "DeepSearch", "Select"}
 local CM_Modes = {"BoundingBox", "Dynamic", "Root Fallback"}
 
 local ESP_List = {}
@@ -181,7 +183,8 @@ local function createToggle(name, settingKey)
     table.insert(_G.PlayerESP_Connections, conn)
 end
 
-local function createModeCycle(name, settingKey, optionsArray)
+-- Добавлен параметр callback для динамического обновления UI
+local function createModeCycle(name, settingKey, optionsArray, callback)
     local btn = Instance.new("TextButton")
     btn.Parent = Container
     btn.BackgroundColor3 = Color3.fromRGB(25, 35, 45)
@@ -203,6 +206,9 @@ local function createModeCycle(name, settingKey, optionsArray)
         if current > #optionsArray then current = 1 end
         ESP_Settings[settingKey] = current
         btn.Text = "  " .. name .. ": " .. optionsArray[current]
+        
+        -- Вызываем коллбэк, если он есть
+        if callback then callback(current) end
     end)
     table.insert(_G.PlayerESP_Connections, conn)
 end
@@ -257,9 +263,71 @@ local function createInputField(name, settingKey, min, max, isFloat)
     table.insert(_G.PlayerESP_Connections, conn)
 end
 
+-- Функция для создания текстового поля (для ввода названия команды)
+local function createStringField(name, settingKey)
+    local frame = Instance.new("Frame")
+    frame.Parent = Container
+    frame.BackgroundColor3 = Color3.fromRGB(32, 32, 32)
+    frame.BorderSizePixel = 0
+    frame.Size = UDim2.new(1, -5, 0, 35)
+    
+    local corner = Instance.new("UICorner")
+    corner.CornerRadius = UDim.new(0, 6)
+    corner.Parent = frame
+    
+    local title = Instance.new("TextLabel")
+    title.Parent = frame
+    title.BackgroundTransparency = 1
+    title.Position = UDim2.new(0, 10, 0, 0)
+    title.Size = UDim2.new(0.45, 0, 1, 0)
+    title.Font = Enum.Font.GothamMedium
+    title.Text = name
+    title.TextColor3 = Color3.fromRGB(210, 210, 210)
+    title.TextSize = 11.5
+    title.TextXAlignment = Enum.TextXAlignment.Left
+    
+    local input = Instance.new("TextBox")
+    input.Parent = frame
+    input.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
+    input.BorderSizePixel = 0
+    input.Position = UDim2.new(0.45, 0, 0.15, 0)
+    input.Size = UDim2.new(0.5, 0, 0.7, 0)
+    input.Font = Enum.Font.Gotham
+    input.Text = ESP_Settings[settingKey]
+    input.TextColor3 = Color3.fromRGB(255, 255, 255)
+    input.TextSize = 11
+    input.ClipsDescendants = true
+    input.ClearTextOnFocus = false
+    
+    local inputCorner = Instance.new("UICorner")
+    inputCorner.CornerRadius = UDim.new(0, 4)
+    inputCorner.Parent = input
+    
+    local conn = input.FocusLost:Connect(function()
+        ESP_Settings[settingKey] = input.Text
+    end)
+    table.insert(_G.PlayerESP_Connections, conn)
+    
+    return frame
+end
+
 createToggle("Master Switch", "Enabled")
 createToggle("Team Check", "TeamCheck")
-createModeCycle("TC Mode", "TeamCheckMode", TC_Modes)
+
+-- Заранее объявляем переменную поля, чтобы менять её видимость
+local targetTeamField 
+
+createModeCycle("TC Mode", "TeamCheckMode", TC_Modes, function(currentIndex)
+    -- Показываем поле ввода только если выбран "Select" (индекс 6)
+    if targetTeamField then
+        targetTeamField.Visible = (currentIndex == 6)
+    end
+end)
+
+-- Создаем само текстовое поле
+targetTeamField = createStringField("Team Name", "TargetTeamName")
+targetTeamField.Visible = (ESP_Settings.TeamCheckMode == 6) -- Скрыто по умолчанию
+
 createToggle("CModel Mode", "CModelMode")
 createModeCycle("CM Mode", "CModelModeType", CM_Modes)
 createToggle("Wall Check", "WallCheck")
@@ -354,6 +422,13 @@ local function isTeammateCheck(player, character)
     elseif mode == 4 then 
         if character and lpChar and character.Parent and lpChar.Parent then
             if character.Parent == lpChar.Parent and character.Parent ~= workspace then return true end
+        end
+    elseif mode == 6 then
+        -- РЕЖИМ SELECT: Показываем только тех, чья команда совпадает с TargetTeamName
+        if player.Team and string.lower(player.Team.Name) == string.lower(ESP_Settings.TargetTeamName) then
+            return false -- Не скрываем (считаем их "врагами")
+        else
+            return true -- Скрываем (считаем их "своими")
         end
     end
     return false
