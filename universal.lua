@@ -33,19 +33,25 @@ local localPlayer = Players.LocalPlayer
 local ESP_Settings = {
     Enabled = true,
     TeamCheck = false,
+    TeamCheckMode = 1, -- 1: Standard, 2: Attributes, 3: ColorMatch, 4: Hierarchy, 5: DeepSearch
     CModelMode = false,
+    CModelModeType = 1, -- 1: BoundingBox, 2: Dynamic, 3: Root Fallback
     Box = true,
     NameInfo = true,
     HealthBar = true,
     Chams = false,
     WallCheck = false,
-    Tracers = true,            -- Трасеры включены по умолчанию
-    TracerThickness = 1,       -- Настройка толщины
-    TracerTransparency = 0.2,   -- Настройка прозрачности (как в coldwar)
+    Tracers = true,            
+    TracerThickness = 1,       
+    TracerTransparency = 0.2,   
     ChamsFillAlpha = 0.5,
     ChamsOutlineAlpha = 0.2,
     FadeSpeed = 2.5
 }
+
+-- Расширенный список режимов Team Check
+local TC_Modes = {"Standard", "Attributes", "ColorMatch", "Hierarchy", "DeepSearch"}
+local CM_Modes = {"BoundingBox", "Dynamic", "Root Fallback"}
 
 local ESP_List = {}
 
@@ -74,14 +80,12 @@ MainFrame.SliceCenter = Rect.new(100, 100, 100, 100)
 MainFrame.SliceScale = 0.120
 MainFrame.Active = true
 
--- Голубой аутлайн (контур) вокруг всей менюшки вместо верхней линии
 local MenuOutline = Instance.new("UIStroke")
 MenuOutline.Parent = MainFrame
 MenuOutline.Color = Color3.fromRGB(0, 170, 255)
 MenuOutline.Thickness = 1.5
 MenuOutline.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
 
--- Скругление для контура, чтобы он повторял форму ImageLabel
 local MenuCorner = Instance.new("UICorner")
 MenuCorner.CornerRadius = UDim.new(0, 12)
 MenuCorner.Parent = MainFrame
@@ -107,7 +111,6 @@ HintLabel.TextColor3 = Color3.fromRGB(90, 90, 90)
 HintLabel.TextSize = 10.000
 HintLabel.TextXAlignment = Enum.TextXAlignment.Right
 
--- Скроллинг контейнер
 local Container = Instance.new("ScrollingFrame")
 Container.Parent = MainFrame
 Container.BackgroundTransparency = 1
@@ -124,7 +127,6 @@ UIListLayout.Parent = Container
 UIListLayout.SortOrder = Enum.SortOrder.LayoutOrder
 UIListLayout.Padding = UDim.new(0, 6)
 
--- Драг интерфейса
 local function drag(GuiObj)
 	local dragToggle, dragInput, dragStart, startPos
 	local conn1 = GuiObj.InputBegan:Connect(function(input)
@@ -186,6 +188,32 @@ local function createToggle(name, settingKey)
     table.insert(_G.PlayerESP_Connections, conn)
 end
 
+local function createModeCycle(name, settingKey, optionsArray)
+    local btn = Instance.new("TextButton")
+    btn.Parent = Container
+    btn.BackgroundColor3 = Color3.fromRGB(25, 35, 45)
+    btn.BorderSizePixel = 0
+    btn.Size = UDim2.new(1, -5, 0, 28)
+    btn.Font = Enum.Font.GothamMedium
+    btn.Text = "  " .. name .. ": " .. optionsArray[ESP_Settings[settingKey]]
+    btn.TextColor3 = Color3.fromRGB(150, 200, 255)
+    btn.TextSize = 10.5
+    btn.TextXAlignment = Enum.TextXAlignment.Left
+
+    local corner = Instance.new("UICorner")
+    corner.CornerRadius = UDim.new(0, 6)
+    corner.Parent = btn
+
+    local conn = btn.MouseButton1Click:Connect(function()
+        local current = ESP_Settings[settingKey]
+        current = current + 1
+        if current > #optionsArray then current = 1 end
+        ESP_Settings[settingKey] = current
+        btn.Text = "  " .. name .. ": " .. optionsArray[current]
+    end)
+    table.insert(_G.PlayerESP_Connections, conn)
+end
+
 local function createInputField(name, settingKey, min, max, isFloat)
     local frame = Instance.new("Frame")
     frame.Parent = Container
@@ -238,7 +266,9 @@ end
 
 createToggle("Master Switch", "Enabled")
 createToggle("Team Check", "TeamCheck")
+createModeCycle("TC Mode", "TeamCheckMode", TC_Modes)
 createToggle("CModel Mode", "CModelMode")
+createModeCycle("CM Mode", "CModelModeType", CM_Modes)
 createToggle("Wall Check", "WallCheck")
 createToggle("Show Boxes", "Box")
 createToggle("Name & Distance", "NameInfo")
@@ -250,7 +280,6 @@ createToggle("Tracers", "Tracers")
 createInputField("Tracer Thickness", "TracerThickness", 1, 10, false)
 createInputField("Tracer Transp", "TracerTransparency", 0, 1, true)
 
--- === ФУНКЦИЯ ПОЛНОГО ОТКЛЮЧЕНИЯ ===
 local function killScript()
     ESP_Settings.Enabled = false
     if _G.PlayerESP_Drawings then
@@ -293,7 +322,6 @@ local uiToggleConn = UserInputService.InputBegan:Connect(function(input, gamePro
 end)
 table.insert(_G.PlayerESP_Connections, uiToggleConn)
 
--- === ЛОГИКА ESP ===
 local function hideESP(data)
     data.Box.Visible = false
     data.NameText.Visible = false
@@ -308,27 +336,69 @@ local function getTeamColor(player)
 	return Color3.new(1, 1, 1)
 end
 
+-- === УЛУЧШЕННЫЙ TEAM CHECK ===
 local function isTeammateCheck(player, character)
     if player == localPlayer then return true end
-    if localPlayer.Team ~= nil and player.Team == localPlayer.Team then return true end
-    if localPlayer.TeamColor ~= nil and player.TeamColor == localPlayer.TeamColor and not player.Neutral then return true end
+    local mode = ESP_Settings.TeamCheckMode
+    local lpChar = localPlayer.Character
+
+    if mode == 1 then -- Standard
+        if localPlayer.Team ~= nil and player.Team == localPlayer.Team then return true end
+        if localPlayer.TeamColor ~= nil and player.TeamColor == localPlayer.TeamColor and not player.Neutral then return true end
     
-    if character then
-        for _, attrName in ipairs({"Team", "Clan", "Faction", "Group", "Alliance"}) do
-            local charAttr = character:GetAttribute(attrName)
-            local localAttr = localPlayer.Character and localPlayer.Character:GetAttribute(attrName)
-            if charAttr and localAttr and charAttr == localAttr then return true end
+    elseif mode == 2 then -- Attributes
+        if character then
+            for _, attrName in ipairs({"Team", "Clan", "Faction", "Group", "Alliance", "Side"}) do
+                local charAttr = character:GetAttribute(attrName)
+                local localAttr = lpChar and lpChar:GetAttribute(attrName)
+                if charAttr and localAttr and charAttr == localAttr then return true end
+            end
         end
+        for _, attrName in ipairs({"Team", "Clan", "Faction", "Side"}) do
+            local pAttr = player:GetAttribute(attrName)
+            local lAttr = localPlayer:GetAttribute(attrName)
+            if pAttr and lAttr and pAttr == lAttr then return true end
+        end
+    
+    elseif mode == 3 then -- ColorMatch
+        if character and lpChar then
+            local pPart = character:FindFirstChild("Torso") or character:FindFirstChild("UpperTorso") or character:FindFirstChild("Head")
+            local lPart = lpChar:FindFirstChild("Torso") or lpChar:FindFirstChild("UpperTorso") or lpChar:FindFirstChild("Head")
+            if pPart and lPart and pPart.Color == lPart.Color then return true end
+        end
+        
+    elseif mode == 4 then -- Hierarchy (Folders) - Для кастомных шутеров
+        if character and lpChar and character.Parent and lpChar.Parent then
+            if character.Parent == lpChar.Parent and character.Parent ~= workspace then
+                return true
+            end
+        end
+        
+    elseif mode == 5 then -- DeepSearch (Value Objects) - Агрессивный скан
+        local function scanValues(obj1, obj2)
+            if not obj1 or not obj2 then return false end
+            for _, val1 in ipairs(obj1:GetChildren()) do
+                if val1:IsA("StringValue") or val1:IsA("IntValue") or val1:IsA("ObjectValue") then
+                    local vName = string.lower(val1.Name)
+                    -- Ищем типичные названия переменных для команд
+                    if string.find(vName, "team") or string.find(vName, "faction") or string.find(vName, "side") or string.find(vName, "role") then
+                        local val2 = obj2:FindFirstChild(val1.Name)
+                        if val2 and val1.Value == val2.Value then
+                            return true
+                        end
+                    end
+                end
+            end
+            return false
+        end
+        
+        if scanValues(player, localPlayer) then return true end
+        if scanValues(character, lpChar) then return true end
     end
-    for _, attrName in ipairs({"Team", "Clan", "Faction"}) do
-        local pAttr = player:GetAttribute(attrName)
-        local lAttr = localPlayer:GetAttribute(attrName)
-        if pAttr and lAttr and pAttr == lAttr then return true end
-    end
+    
     return false
 end
 
--- Ray-WallCheck (ViewportPointToRay)
 local function checkVisibility(targetPart, targetCharacter)
     if not targetPart or not targetCharacter then return false end
     local origin = camera.CFrame.Position
@@ -351,7 +421,7 @@ local function createESP(player)
         NameText = Drawing.new("Text"),
         HealthBarBG = Drawing.new("Square"),
         HealthBar = Drawing.new("Square"),
-        Tracer = Drawing.new("Line"), -- Внедрение трасеров на базе Drawing (из coldwar)
+        Tracer = Drawing.new("Line"), 
         Chams = Instance.new("Highlight")
     }
 
@@ -367,7 +437,6 @@ local function createESP(player)
     data.HealthBar.Visible = false; data.HealthBar.Color = Color3.fromRGB(0, 255, 0); data.HealthBar.Thickness = 1; data.HealthBar.Filled = true; data.HealthBar.Transparency = 0
     table.insert(_G.PlayerESP_Drawings, data.HealthBar)
 
-    -- Конфигурация новой линии трасера из скрипта coldwar
     data.Tracer.Visible = false
     data.Tracer.Thickness = ESP_Settings.TracerThickness
     data.Tracer.Transparency = ESP_Settings.TracerTransparency
@@ -428,7 +497,6 @@ local renderConn = RunService.RenderStepped:Connect(function(deltaTime)
     end
 
     local viewportSize = camera.ViewportSize
-    -- Определение центра экрана для трасеров из coldwar
     local screenCenter = Vector2.new(viewportSize.X / 2, viewportSize.Y / 2)
 
     for player, data in pairs(ESP_List) do
@@ -441,13 +509,49 @@ local renderConn = RunService.RenderStepped:Connect(function(deltaTime)
 
         if shouldShow then
             if ESP_Settings.CModelMode then
-                local cframe, size = character:GetBoundingBox()
-                if not cframe or size == Vector3.new() then shouldShow = false else
-                    rootPos = cframe.Position
-                    targetPart = character:FindFirstChild("HumanoidRootPart") or character.PrimaryPart
-                    local heightY = math.max(size.Y, 2) 
-                    headPos = rootPos + Vector3.new(0, heightY / 2, 0)
-                    legPos = rootPos - Vector3.new(0, heightY / 2, 0)
+                local cmMode = ESP_Settings.CModelModeType
+                
+                if cmMode == 1 then
+                    local cframe, size = character:GetBoundingBox()
+                    if not cframe or size == Vector3.new() then shouldShow = false else
+                        rootPos = cframe.Position
+                        targetPart = character:FindFirstChild("HumanoidRootPart") or character.PrimaryPart
+                        local heightY = math.max(size.Y, 2) 
+                        headPos = rootPos + Vector3.new(0, heightY / 2, 0)
+                        legPos = rootPos - Vector3.new(0, heightY / 2, 0)
+                    end
+                    
+                elseif cmMode == 2 then
+                    local highestY, lowestY = -math.huge, math.huge
+                    local root = character.PrimaryPart or character:FindFirstChild("HumanoidRootPart") or character:FindFirstChildWhichIsA("BasePart")
+                    if not root then shouldShow = false else
+                        rootPos = root.Position
+                        targetPart = root
+                        for _, part in ipairs(character:GetChildren()) do
+                            if part:IsA("BasePart") then
+                                local y = part.Position.Y
+                                local halfSize = part.Size.Y / 2
+                                if (y + halfSize) > highestY then highestY = y + halfSize end
+                                if (y - halfSize) < lowestY then lowestY = y - halfSize end
+                            end
+                        end
+                        if highestY == -math.huge then
+                            headPos = rootPos + Vector3.new(0, 2, 0)
+                            legPos = rootPos - Vector3.new(0, 3, 0)
+                        else
+                            headPos = Vector3.new(rootPos.X, highestY, rootPos.Z)
+                            legPos = Vector3.new(rootPos.X, lowestY, rootPos.Z)
+                        end
+                    end
+                    
+                elseif cmMode == 3 then
+                    local hrp = character:FindFirstChild("HumanoidRootPart") or character:FindFirstChildWhichIsA("BasePart")
+                    if not hrp then shouldShow = false else
+                        targetPart = hrp
+                        rootPos = hrp.Position
+                        headPos = rootPos + Vector3.new(0, 2.5, 0)
+                        legPos = rootPos - Vector3.new(0, 3, 0)
+                    end
                 end
             else
                 local hrp = character:FindFirstChild("HumanoidRootPart")
@@ -483,7 +587,6 @@ local renderConn = RunService.RenderStepped:Connect(function(deltaTime)
                 isVisible = checkVisibility(targetPart, character)
             end
 
-            -- Цвета с учетом проверки стен
             local activeBoxColor = Color3.fromRGB(255, 255, 255)
             local activeChamsColor = Color3.fromRGB(255, 50, 50)
 
@@ -553,7 +656,6 @@ local renderConn = RunService.RenderStepped:Connect(function(deltaTime)
                 data.HealthBar.Visible = false
             end
 
-            -- Логика трасеров прямо из скрипта coldwar (из центра экрана к RootPart)
             if ESP_Settings.Tracers and onScreen then
                 data.Tracer.From = screenCenter
                 data.Tracer.To = Vector2.new(vector.X, vector.Y)
