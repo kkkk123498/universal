@@ -53,6 +53,7 @@ local ESP_Settings = {
     WalkSpeed = 16,
     NoclipKey = "NONE",
     FlyKey = "NONE",
+    BindList = false, -- Новая настройка для Bind List
     -- === ЦВЕТА ESP ===
     ColorBox = Color3.fromRGB(255, 255, 255),
     ColorBoxVis = Color3.fromRGB(255, 50, 50),
@@ -104,7 +105,6 @@ local function deserializeSettings(str)
                 ESP_Settings[k] = v
             end
         end
-        -- Визуальное обновление элементов интерфейса под новые настройки
         for settingKey, statusFill in pairs(toggleVisuals) do
             statusFill.Visible = ESP_Settings[settingKey] or false
         end
@@ -210,6 +210,109 @@ local UIListLayout = Instance.new("UIListLayout")
 UIListLayout.Parent = Container
 UIListLayout.SortOrder = Enum.SortOrder.LayoutOrder
 UIListLayout.Padding = UDim.new(0, 4)
+
+-- === ОКНО BIND LIST ===
+local BindListFrame = Instance.new("Frame")
+BindListFrame.Name = "BindListFrame"
+BindListFrame.Parent = ESP_GUI
+BindListFrame.BackgroundColor3 = c_Background
+BindListFrame.BorderColor3 = c_Font
+BindListFrame.BorderSizePixel = 2
+BindListFrame.Position = UDim2.new(0.1, 0, 0.4, 0) 
+BindListFrame.Size = UDim2.new(0, 180, 0, 80)
+BindListFrame.Visible = false
+BindListFrame.Active = true
+
+local BLTitleBar = Instance.new("Frame")
+BLTitleBar.Parent = BindListFrame
+BLTitleBar.BackgroundColor3 = c_Title
+BLTitleBar.BorderColor3 = c_Font
+BLTitleBar.BorderSizePixel = 1
+BLTitleBar.Position = UDim2.new(0, 2, 0, 2)
+BLTitleBar.Size = UDim2.new(1, -4, 0, 20)
+drag(BindListFrame, BLTitleBar)
+
+local BLTitle = Instance.new("TextLabel")
+BLTitle.Parent = BLTitleBar
+BLTitle.BackgroundTransparency = 1.000
+BLTitle.Size = UDim2.new(1, -5, 1, 0)
+BLTitle.Position = UDim2.new(0, 5, 0, 0)
+BLTitle.Font = mainFont
+BLTitle.Text = "BIND LIST"
+BLTitle.TextColor3 = c_Background
+BLTitle.TextSize = 14.000
+BLTitle.TextXAlignment = Enum.TextXAlignment.Left
+
+-- Лейблы для списка биндов
+local BL_FlyLabel = Instance.new("TextLabel")
+BL_FlyLabel.Parent = BindListFrame
+BL_FlyLabel.BackgroundTransparency = 1
+BL_FlyLabel.Position = UDim2.new(0, 8, 0, 30)
+BL_FlyLabel.Size = UDim2.new(1, -16, 0, 20)
+BL_FlyLabel.Font = mainFont
+BL_FlyLabel.Text = "FLY: OFF [NONE]"
+BL_FlyLabel.TextColor3 = c_Font
+BL_FlyLabel.TextSize = 13
+BL_FlyLabel.TextXAlignment = Enum.TextXAlignment.Left
+
+local BL_NoclipLabel = Instance.new("TextLabel")
+BL_NoclipLabel.Parent = BindListFrame
+BL_NoclipLabel.BackgroundTransparency = 1
+BL_NoclipLabel.Position = UDim2.new(0, 8, 0, 50)
+BL_NoclipLabel.Size = UDim2.new(1, -16, 0, 20)
+BL_NoclipLabel.Font = mainFont
+BL_NoclipLabel.Text = "NOCLIP: OFF [NONE]"
+BL_NoclipLabel.TextColor3 = c_Font
+BL_NoclipLabel.TextSize = 13
+BL_NoclipLabel.TextXAlignment = Enum.TextXAlignment.Left
+
+-- Кнопка растягивания окна в ПРАВОМ НИЖНЕМ углу (для стабильности UI)
+local BLResizeBtn = Instance.new("TextButton")
+BLResizeBtn.Parent = BindListFrame
+BLResizeBtn.BackgroundColor3 = c_Button
+BLResizeBtn.BorderColor3 = c_Font
+BLResizeBtn.BorderSizePixel = 1
+BLResizeBtn.Position = UDim2.new(1, -12, 1, -12)
+BLResizeBtn.Size = UDim2.new(0, 12, 0, 12)
+BLResizeBtn.Font = Enum.Font.SourceSans
+BLResizeBtn.Text = "↘"
+BLResizeBtn.TextColor3 = c_Font
+BLResizeBtn.TextSize = 10
+
+local blResizing = false
+BLResizeBtn.InputBegan:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseButton1 then
+        blResizing = true
+    end
+end)
+UserInputService.InputEnded:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseButton1 then
+        blResizing = false
+    end
+end)
+UserInputService.InputChanged:Connect(function(input)
+    if blResizing and input.UserInputType == Enum.UserInputType.MouseMovement then
+        local newWidth = input.Position.X - BindListFrame.AbsolutePosition.X
+        local newHeight = input.Position.Y - BindListFrame.AbsolutePosition.Y
+        BindListFrame.Size = UDim2.new(0, math.max(120, newWidth), 0, math.max(80, newHeight))
+    end
+end)
+
+-- Обновление текста в Bind List
+local bindListUpdateConn = RunService.RenderStepped:Connect(function()
+    if ESP_Settings.BindList then
+        BindListFrame.Visible = true
+        local fState = ESP_Settings.Fly and "ON" or "OFF"
+        local nState = ESP_Settings.Noclip and "ON" or "OFF"
+        
+        BL_FlyLabel.Text = "FLY: " .. fState .. " [" .. ESP_Settings.FlyKey .. "]"
+        BL_NoclipLabel.Text = "NOCLIP: " .. nState .. " [" .. ESP_Settings.NoclipKey .. "]"
+    else
+        BindListFrame.Visible = false
+    end
+end)
+table.insert(_G.PlayerESP_Connections, bindListUpdateConn)
+
 
 -- === ОКНО КАСТОМИЗАЦИИ ===
 local CustomizeFrame = Instance.new("Frame")
@@ -514,7 +617,6 @@ DeleteConfigBtn.Text = "Удалить конфиг"
 DeleteConfigBtn.TextColor3 = Color3.fromRGB(168, 0, 0)
 DeleteConfigBtn.TextSize = 13
 
--- Логика управления файлами конфигурации
 local selectedConfigPath = ""
 
 local function refreshConfigList()
@@ -641,7 +743,6 @@ CP_CloseBtn.TextColor3 = c_Font
 CP_CloseBtn.TextSize = 12
 CP_CloseBtn.ZIndex = 12
 
--- Элементы внутри Color Picker
 local CP_Preview = Instance.new("Frame")
 CP_Preview.Parent = CP_Frame
 CP_Preview.BackgroundColor3 = Color3.new(1, 1, 1)
@@ -681,7 +782,6 @@ CP_HexText.TextXAlignment = Enum.TextXAlignment.Left
 CP_HexText.ClearTextOnFocus = false
 CP_HexText.ZIndex = 11
 
--- Карта цветов
 local CP_ColorMap = Instance.new("Frame")
 CP_ColorMap.Parent = CP_Frame
 CP_ColorMap.BackgroundColor3 = Color3.new(1, 0, 0)
@@ -724,7 +824,6 @@ CP_MapCursor.Size = UDim2.new(0, 6, 0, 6)
 CP_MapCursor.Position = UDim2.new(1, -3, 0, -3)
 CP_MapCursor.ZIndex = 14
 
--- Ползунок Оттенка
 local CP_HueSlider = Instance.new("Frame")
 CP_HueSlider.Parent = CP_Frame
 CP_HueSlider.BackgroundColor3 = Color3.new(1, 1, 1)
@@ -755,7 +854,6 @@ CP_HueCursor.Size = UDim2.new(0, 6, 1, 4)
 CP_HueCursor.Position = UDim2.new(0, -3, 0, -2)
 CP_HueCursor.ZIndex = 14
 
--- Логика Color Picker
 local activeColorSetting = nil
 local activePreviewBox = nil
 local currentHue, currentSat, currentVal = 1, 1, 1
@@ -850,7 +948,6 @@ CP_HueSlider.InputBegan:Connect(function(input)
     end
 end)
 
--- === ОБНОВЛЕННАЯ ФУНКЦИЯ createColorInput ===
 local function createColorInput(name, settingKey)
     local frame = Instance.new("Frame")
     frame.Parent = Cust_Container
@@ -1070,13 +1167,12 @@ table.insert(_G.PlayerESP_Connections, globalBindConn)
 createToggle("Master Switch", "Enabled")
 createToggle("Team Check", "TeamCheck")
 
--- [ИСПРАВЛЕНО] Логика открытия окошка фильтра при выборе режима Select
 createModeCycle("TC Mode", "TeamCheckMode", TC_Modes, function(currentIndex)
     if TeamSelectFrame then
         TeamSelectFrame.Visible = (currentIndex == 6)
         if currentIndex == 6 then
             updateTeamDropdown()
-            if ConfigFrame then ConfigFrame.Visible = false end -- прячем конфиг если открываем селект
+            if ConfigFrame then ConfigFrame.Visible = false end 
         end
     end
 end)
@@ -1105,6 +1201,9 @@ local extraSpacer = Instance.new("Frame")
 extraSpacer.Parent = Container
 extraSpacer.BackgroundTransparency = 1
 extraSpacer.Size = UDim2.new(1, 0, 0, 5)
+
+-- Кнопка для включения/выключения Bind List
+createToggle("Show Bind List", "BindList")
 
 createToggle("Noclip", "Noclip")
 createKeybindField("Bind Noclip", "NoclipKey")
@@ -1176,7 +1275,6 @@ local custConn = custBtn.MouseButton1Click:Connect(function()
 end)
 table.insert(_G.PlayerESP_Connections, custConn)
 
--- Кнопка Config под кнопкой Customize
 local configBtn = Instance.new("TextButton")
 configBtn.Parent = Container
 configBtn.BackgroundColor3 = c_Button
@@ -1191,7 +1289,7 @@ local configConn = configBtn.MouseButton1Click:Connect(function()
     ConfigFrame.Visible = not ConfigFrame.Visible 
     if ConfigFrame.Visible then 
         refreshConfigList() 
-        if TeamSelectFrame then TeamSelectFrame.Visible = false end -- прячем селект если открыли конфиг
+        if TeamSelectFrame then TeamSelectFrame.Visible = false end
     end
 end)
 table.insert(_G.PlayerESP_Connections, configConn)
@@ -1310,7 +1408,6 @@ local function isTeammateCheck(player, character)
             local pCharT = character:FindFirstChild("Team", true) or character:FindFirstChild("Faction", true)
             if lpCharT and pCharT and lpCharT.Value == pCharT.Value then return true end
         end
-    -- [ИСПРАВЛЕНО] Режим 6 возвращен к работе через меню фильтров.
     elseif mode == 6 then
         local tName = player.Team and player.Team.Name or ""
         if ESP_Settings.TargetTeams[tName] then 
