@@ -49,7 +49,6 @@ local ESP_Settings = {
     FadeSpeed = 2.5
 }
 
--- Расширенный список режимов Team Check
 local TC_Modes = {"Standard", "Attributes", "ColorMatch", "Hierarchy", "DeepSearch"}
 local CM_Modes = {"BoundingBox", "Dynamic", "Root Fallback"}
 
@@ -336,7 +335,6 @@ local function getTeamColor(player)
 	return Color3.new(1, 1, 1)
 end
 
--- === УЛУЧШЕННЫЙ TEAM CHECK ===
 local function isTeammateCheck(player, character)
     if player == localPlayer then return true end
     local mode = ESP_Settings.TeamCheckMode
@@ -367,20 +365,19 @@ local function isTeammateCheck(player, character)
             if pPart and lPart and pPart.Color == lPart.Color then return true end
         end
         
-    elseif mode == 4 then -- Hierarchy (Folders) - Для кастомных шутеров
+    elseif mode == 4 then -- Hierarchy 
         if character and lpChar and character.Parent and lpChar.Parent then
             if character.Parent == lpChar.Parent and character.Parent ~= workspace then
                 return true
             end
         end
         
-    elseif mode == 5 then -- DeepSearch (Value Objects) - Агрессивный скан
+    elseif mode == 5 then -- DeepSearch
         local function scanValues(obj1, obj2)
             if not obj1 or not obj2 then return false end
             for _, val1 in ipairs(obj1:GetChildren()) do
                 if val1:IsA("StringValue") or val1:IsA("IntValue") or val1:IsA("ObjectValue") then
                     local vName = string.lower(val1.Name)
-                    -- Ищем типичные названия переменных для команд
                     if string.find(vName, "team") or string.find(vName, "faction") or string.find(vName, "side") or string.find(vName, "role") then
                         local val2 = obj2:FindFirstChild(val1.Name)
                         if val2 and val1.Value == val2.Value then
@@ -399,16 +396,34 @@ local function isTeammateCheck(player, character)
     return false
 end
 
+-- === УМНЫЙ WALL CHECK (ИГНОРИРОВАНИЕ БЕЗ КОЛЛИЗИИ) ===
 local function checkVisibility(targetPart, targetCharacter)
     if not targetPart or not targetCharacter then return false end
     local origin = camera.CFrame.Position
     local direction = (targetPart.Position - origin)
     
-    local ray = Ray.new(origin, direction)
     local ignoreList = {camera, localPlayer.Character, targetCharacter}
-    local hitPart, hitPosition = workspace:FindPartOnRayWithIgnoreList(ray, ignoreList, true, true)
+    local ray = Ray.new(origin, direction)
     
-    return hitPart == nil
+    local iterations = 0
+    -- Цикл проверяет объекты на пути луча
+    while iterations < 30 do
+        local hitPart = workspace:FindPartOnRayWithIgnoreList(ray, ignoreList, true, true)
+        
+        if not hitPart then
+            return true -- Луч долетел до цели, путь чист
+        end
+        
+        -- Если объект прозрачный (невидимая стена) или сквозь него можно пройти
+        if hitPart.CanCollide == false or hitPart.Transparency == 1 then
+            table.insert(ignoreList, hitPart) -- Добавляем объект в игнор
+            iterations = iterations + 1 -- Продолжаем пускать луч
+        else
+            return false -- Уперлись в настоящую физическую преграду
+        end
+    end
+    
+    return false -- Если слишком много объектов, считаем что закрыто
 end
 
 local function createESP(player)
