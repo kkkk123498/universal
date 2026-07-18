@@ -29,7 +29,7 @@ local ESP_Settings = {
     Enabled = true,
     TeamCheck = false,
     TeamCheckMode = 1,
-    TargetTeams = {}, -- Таблица выбранных команд {["TeamName"] = true}
+    TargetTeams = {}, -- Здесь теперь хранится таблица выбранных команд {["TeamName"] = true}
     CModelMode = false,
     CModelModeType = 1,
     Box = true,
@@ -116,7 +116,6 @@ Container.AutomaticCanvasSize = Enum.AutomaticSize.Y
 Container.ScrollBarThickness = 2
 Container.ScrollBarImageColor3 = Color3.fromRGB(60, 60, 60)
 Container.BorderSizePixel = 0
-Container.ClipsDescendants = true
 
 local UIListLayout = Instance.new("UIListLayout")
 UIListLayout.Parent = Container
@@ -126,11 +125,11 @@ UIListLayout.Padding = UDim.new(0, 6)
 -- === ДОПОЛНИТЕЛЬНОЕ МЕНЮ ВЫБОРА КОМАНД (СПРАВА) ===
 local TeamSelectFrame = Instance.new("ImageLabel")
 TeamSelectFrame.Name = "TeamSelectFrame"
-TeamSelectFrame.Parent = MainFrame
+TeamSelectFrame.Parent = MainFrame -- Привязано к MainFrame, чтобы двигалось вместе
 TeamSelectFrame.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
 TeamSelectFrame.BackgroundTransparency = 1.000
-TeamSelectFrame.Position = UDim2.new(1, 8, 0, 0)
-TeamSelectFrame.Size = UDim2.new(0, 180, 0, 320)
+TeamSelectFrame.Position = UDim2.new(1, 8, 0, 0) -- Ровно справа с отступом 8 пикселей
+TeamSelectFrame.Size = UDim2.new(0, 180, 0, 300)
 TeamSelectFrame.Image = "rbxassetid://3570695787"
 TeamSelectFrame.ImageColor3 = Color3.fromRGB(22, 22, 22)
 TeamSelectFrame.ScaleType = Enum.ScaleType.Slice
@@ -165,99 +164,60 @@ TS_Container.Position = UDim2.new(0.05, 0, 0.12, 0)
 TS_Container.Size = UDim2.new(0.9, 0, 0.84, 0)
 TS_Container.CanvasSize = UDim2.new(0, 0, 0, 0)
 TS_Container.AutomaticCanvasSize = Enum.AutomaticSize.Y
-TS_Container.ScrollBarThickness = 3
-TS_Container.ScrollBarImageColor3 = Color3.fromRGB(0, 170, 255)
+TS_Container.ScrollBarThickness = 2
+TS_Container.ScrollBarImageColor3 = Color3.fromRGB(60, 60, 60)
 TS_Container.BorderSizePixel = 0
-TS_Container.ClipsDescendants = true
-TS_Container.Selectable = true
 
 local TS_ListLayout = Instance.new("UIListLayout")
 TS_ListLayout.Parent = TS_Container
 TS_ListLayout.SortOrder = Enum.SortOrder.LayoutOrder
 TS_ListLayout.Padding = UDim.new(0, 5)
 
--- Функция обновления списка команд
+-- Функция обновления списка команд в выпадающем меню
 local function updateTeamDropdown()
     for _, child in ipairs(TS_Container:GetChildren()) do
-        if child:IsA("TextButton") or child:IsA("TextLabel") or child:IsA("Frame") then 
-            child:Destroy() 
-        end
+        if child:IsA("TextButton") then child:Destroy() end
     end
 
-    local foundTeamNames = {}
-    foundTeamNames["Criminals"] = true
-    
     for _, team in ipairs(Teams:GetTeams()) do
-        foundTeamNames[team.Name] = true
-    end
-    
-    for _, player in ipairs(Players:GetPlayers()) do
-        if player.Team then
-            foundTeamNames[player.Team.Name] = true
-        end
-    end
-
-    local sortedTeams = {}
-    for teamName, _ in pairs(foundTeamNames) do
-        table.insert(sortedTeams, teamName)
-    end
-    table.sort(sortedTeams)
-
-    for i, teamName in ipairs(sortedTeams) do
         local tBtn = Instance.new("TextButton")
         tBtn.Parent = TS_Container
         tBtn.BackgroundColor3 = Color3.fromRGB(32, 32, 32)
         tBtn.BorderSizePixel = 0
-        tBtn.Size = UDim2.new(1, -6, 0, 28)
+        tBtn.Size = UDim2.new(1, -4, 0, 28)
         tBtn.Font = Enum.Font.GothamMedium
-        tBtn.Text = "  " .. teamName
+        tBtn.Text = "  " .. team.Name
         tBtn.TextColor3 = Color3.fromRGB(220, 220, 220)
         tBtn.TextSize = 10.5
         tBtn.TextXAlignment = Enum.TextXAlignment.Left
-        tBtn.LayoutOrder = i
 
         local tCorner = Instance.new("UICorner")
         tCorner.CornerRadius = UDim.new(0, 5)
         tCorner.Parent = tBtn
 
+        -- Квадратик-индикатор выбора
         local checkbox = Instance.new("Frame")
         checkbox.Parent = tBtn
         checkbox.Position = UDim2.new(0.84, 0, 0.25, 0)
         checkbox.Size = UDim2.new(0, 14, 0, 14)
-        checkbox.BackgroundColor3 = ESP_Settings.TargetTeams[teamName] and Color3.fromRGB(0, 170, 255) or Color3.fromRGB(50, 50, 50)
+        checkbox.BackgroundColor3 = ESP_Settings.TargetTeams[team.Name] and Color3.fromRGB(0, 170, 255) or Color3.fromRGB(50, 50, 50)
         
         local cCorner = Instance.new("UICorner")
         cCorner.CornerRadius = UDim.new(0, 4)
         cCorner.Parent = checkbox
 
         local tConn = tBtn.MouseButton1Click:Connect(function()
-            ESP_Settings.TargetTeams[teamName] = not ESP_Settings.TargetTeams[teamName]
-            checkbox.BackgroundColor3 = ESP_Settings.TargetTeams[teamName] and Color3.fromRGB(0, 170, 255) or Color3.fromRGB(50, 50, 50)
+            ESP_Settings.TargetTeams[team.Name] = not ESP_Settings.TargetTeams[team.Name]
+            checkbox.BackgroundColor3 = ESP_Settings.TargetTeams[team.Name] and Color3.fromRGB(0, 170, 255) or Color3.fromRGB(50, 50, 50)
         end)
         table.insert(_G.PlayerESP_Connections, tConn)
     end
-
-    local spacer = Instance.new("Frame")
-    spacer.Parent = TS_Container
-    spacer.BackgroundTransparency = 1
-    spacer.Size = UDim2.new(1, 0, 0, 4)
-    spacer.LayoutOrder = 9998
-
-    local ERLC_Label = Instance.new("TextLabel")
-    ERLC_Label.Parent = TS_Container
-    ERLC_Label.BackgroundTransparency = 1.000
-    ERLC_Label.Size = UDim2.new(1, -6, 0, 18)
-    ERLC_Label.Font = Enum.Font.GothamBold
-    ERLC_Label.Text = "ДЛЯ ER:LC"
-    ERLC_Label.TextColor3 = Color3.fromRGB(0, 170, 255)
-    ERLC_Label.TextSize = 10.000
-    ERLC_Label.TextXAlignment = Enum.TextXAlignment.Center
-    ERLC_Label.LayoutOrder = 9999
 end
 
-table.insert(_G.PlayerESP_Connections, Teams.ChildAdded:Connect(function() if TeamSelectFrame.Visible then updateTeamDropdown() end end))
-table.insert(_G.PlayerESP_Connections, Teams.ChildRemoved:Connect(function() if TeamSelectFrame.Visible then updateTeamDropdown() end end))
-table.insert(_G.PlayerESP_Connections, Players.PlayerAdded:Connect(function() if TeamSelectFrame.Visible then updateTeamDropdown() end end))
+-- Авто-обновление интерфейса при изменении команд на сервере
+table.insert(_G.PlayerESP_Connections, Teams.ChildAdded:Connect(updateTeamDropdown))
+table.insert(_G.PlayerESP_Connections, Teams.ChildRemoved:Connect(updateTeamDropdown))
+
 
 local function drag(GuiObj)
 	local dragToggle, dragInput, dragStart, startPos
@@ -402,6 +362,7 @@ createToggle("Master Switch", "Enabled")
 createToggle("Team Check", "TeamCheck")
 
 createModeCycle("TC Mode", "TeamCheckMode", TC_Modes, function(currentIndex)
+    -- Показываем меню выбора команд только если выбран режим "Select" (индекс 6)
     if TeamSelectFrame then
         TeamSelectFrame.Visible = (currentIndex == 6)
         if currentIndex == 6 then
@@ -410,6 +371,7 @@ createModeCycle("TC Mode", "TeamCheckMode", TC_Modes, function(currentIndex)
     end
 end)
 
+-- Инициализируем начальную видимость правого меню
 TeamSelectFrame.Visible = (ESP_Settings.TeamCheckMode == 6)
 if ESP_Settings.TeamCheckMode == 6 then updateTeamDropdown() end
 
@@ -482,15 +444,6 @@ local function getTeamColor(player)
 	return Color3.new(1, 1, 1)
 end
 
-local function checkPlayerTeamName(player)
-    if player.Team and player.Team.Name then
-        return player.Team.Name
-    end
-    if player:GetAttribute("Team") then return player:GetAttribute("Team") end
-    if player.Character and player.Character:GetAttribute("Team") then return player.Character:GetAttribute("Team") end
-    return nil
-end
-
 local function isTeammateCheck(player, character)
     if player == localPlayer then return true end
     local mode = ESP_Settings.TeamCheckMode
@@ -518,12 +471,11 @@ local function isTeammateCheck(player, character)
             if character.Parent == lpChar.Parent and character.Parent ~= workspace then return true end
         end
     elseif mode == 6 then
-        local pTeamName = checkPlayerTeamName(player)
-        -- ИСПРАВЛЕННАЯ ЛОГИКА ФИЛЬТРАЦИИ:
-        if pTeamName and ESP_Settings.TargetTeams[pTeamName] then
-            return false -- Если галочка стоит, мы НЕ считаем его тиммейтом (ESP ПОКАЗЫВАЕТ ЕГО)
+        -- РЕЖИМ SELECT (Мульти-выбор): Показываем только тех игроков, чья команда активирована в списке TargetTeams
+        if player.Team and ESP_Settings.TargetTeams[player.Team.Name] then
+            return false -- Не скрываем (это цель для ESP)
         else
-            return true  -- Если галочки нет, считаем тиммейтом (ESP СКРЫВАЕТ ЕГО)
+            return true -- Скрываем (игрок не в выбранной команде)
         end
     end
     return false
@@ -545,7 +497,10 @@ local function checkVisibility(targetPart, targetCharacter)
     local iterations = 0
     while iterations < 10 do
         local result = workspace:Raycast(origin, direction, raycastParams)
-        if not result then return true end
+        
+        if not result then
+            return true 
+        end
         
         local hitPart = result.Instance
         if hitPart.CanCollide == false or hitPart.Transparency == 1 or hitPart.Name == "HumanoidRootPart" then
@@ -556,6 +511,7 @@ local function checkVisibility(targetPart, targetCharacter)
             return false 
         end
     end
+    
     return false 
 end
 
