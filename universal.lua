@@ -48,18 +48,24 @@ local ESP_Settings = {
     FlySpeed = 1,
     WalkSpeedEnabled = false,
     WalkSpeed = 16,
-    -- Бинды
     NoclipKey = "NONE",
-    FlyKey = "NONE"
+    FlyKey = "NONE",
+    -- Список друзей (по умолчанию)
+    Friends = {
+        ["oleg132452"] = true,
+        ["profiboy1108"] = true,
+        ["g_f222"] = true,
+        ["l9vIxs"] = true,
+        ["asdgfhmbvcxz_1"] = true,
+        ["L_777b"] = true,
+        ["asadhgffdsad"] = true
+    }
 }
 
--- Переменные для отслеживания процесса бинда
-local bindingFor = nil -- может быть "NoclipKey" или "FlyKey"
+local bindingFor = nil 
 local bindButtons = {}
-
 local TC_Modes = {"Standard", "Attributes", "ColorMatch", "Hierarchy", "DeepSearch", "Select"}
 local CM_Modes = {"BoundingBox", "Dynamic", "Root Fallback"}
-
 local ESP_List = {}
 
 -- === ИНТЕРФЕЙС ===
@@ -79,7 +85,7 @@ MainFrame.Parent = ESP_GUI
 MainFrame.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
 MainFrame.BackgroundTransparency = 1.000
 MainFrame.Position = UDim2.new(0.6, 0, 0.3, 0)
-MainFrame.Size = UDim2.new(0, 210, 0, 450) -- Немного увеличили высоту для биндов
+MainFrame.Size = UDim2.new(0, 210, 0, 480) -- Увеличили под новое поле
 MainFrame.Image = "rbxassetid://3570695787"
 MainFrame.ImageColor3 = Color3.fromRGB(22, 22, 22)
 MainFrame.ScaleType = Enum.ScaleType.Slice
@@ -309,7 +315,6 @@ local function drag(GuiObj)
 end
 drag(MainFrame)
 
--- Таблица для обновления визуального статуса обычных тогглов снаружи
 local toggleVisuals = {}
 
 local function createToggle(name, settingKey)
@@ -471,7 +476,6 @@ local globalBindConn = UserInputService.InputBegan:Connect(function(input, proce
             bindingFor = nil
         end
     elseif not bindingFor and not processed then
-        -- Проверка нажатия клавиш-биндов для активации
         if input.UserInputType == Enum.UserInputType.Keyboard then
             local keyName = input.KeyCode.Name
             if keyName == ESP_Settings.NoclipKey and ESP_Settings.NoclipKey ~= "NONE" then
@@ -529,6 +533,72 @@ createKeybindField("Bind Fly", "FlyKey")
 
 createToggle("WalkSpeed", "WalkSpeedEnabled")
 createInputField("Speed Value", "WalkSpeed", 0, 500, true)
+
+local spaceBeforeFriend = Instance.new("Frame")
+spaceBeforeFriend.Parent = Container
+spaceBeforeFriend.BackgroundTransparency = 1
+spaceBeforeFriend.Size = UDim2.new(1, 0, 0, 4)
+
+-- Поле ввода "Добавить друга"
+local friendFrame = Instance.new("Frame")
+friendFrame.Parent = Container
+friendFrame.BackgroundColor3 = Color3.fromRGB(28, 40, 28) -- Зеленоватый оттенок для отличия
+friendFrame.BorderSizePixel = 0
+friendFrame.Size = UDim2.new(1, -5, 0, 35)
+
+local friendCorner = Instance.new("UICorner")
+friendCorner.CornerRadius = UDim.new(0, 6)
+friendCorner.Parent = friendFrame
+
+local friendTitle = Instance.new("TextLabel")
+friendTitle.Parent = friendFrame
+friendTitle.BackgroundTransparency = 1
+friendTitle.Position = UDim2.new(0, 10, 0, 0)
+friendTitle.Size = UDim2.new(0.55, -10, 1, 0)
+friendTitle.Font = Enum.Font.GothamMedium
+friendTitle.Text = "Добавить друга"
+friendTitle.TextColor3 = Color3.fromRGB(150, 240, 150)
+friendTitle.TextSize = 11
+friendTitle.TextXAlignment = Enum.TextXAlignment.Left
+
+local friendInput = Instance.new("TextBox")
+friendInput.Parent = friendFrame
+friendInput.BackgroundColor3 = Color3.fromRGB(15, 22, 15)
+friendInput.BorderSizePixel = 0
+friendInput.Position = UDim2.new(0.55, 0, 0.15, 0)
+friendInput.Size = UDim2.new(0.4, 0, 0.7, 0)
+friendInput.Font = Enum.Font.Gotham
+friendInput.Text = ""
+friendInput.PlaceholderText = "Никнейм..."
+friendInput.TextColor3 = Color3.fromRGB(255, 255, 255)
+friendInput.TextSize = 10.5
+friendInput.ClipsDescendants = true
+
+local friendInputCorner = Instance.new("UICorner")
+friendInputCorner.CornerRadius = UDim.new(0, 4)
+friendInputCorner.Parent = friendInput
+
+local friendConn = friendInput.FocusLost:Connect(function(enterPressed)
+    if enterPressed and friendInput.Text ~= "" then
+        local rawText = friendInput.Text
+        local targetName = rawText:lower()
+        
+        -- Попытка автокомплита по игрокам на сервере
+        for _, p in ipairs(Players:GetPlayers()) do
+            if string.sub(p.Name:lower(), 1, #targetName) == targetName then
+                targetName = p.Name:lower()
+                rawText = p.Name
+                break
+            end
+        end
+        
+        ESP_Settings.Friends[targetName] = true
+        friendInput.Text = "Добавлен!"
+        task.wait(1)
+        friendInput.Text = ""
+    end
+end)
+table.insert(_G.PlayerESP_Connections, friendConn)
 
 local function killScript()
     ESP_Settings.Enabled = false
@@ -595,7 +665,7 @@ local uiToggleConn = UserInputService.InputBegan:Connect(function(input, gamePro
 end)
 table.insert(_G.PlayerESP_Connections, uiToggleConn)
 
--- === ХАКИ ДВИЖЕНИЯ (FLY, NOCLIP, WALKSPEED) ===
+-- === ХАКИ ДВИЖЕНИЯ ===
 local FlyKeys = {W = false, A = false, S = false, D = false, Q = false, E = false}
 local flyKeyDown = UserInputService.InputBegan:Connect(function(input, processed)
     if processed then return end
@@ -620,7 +690,6 @@ table.insert(_G.PlayerESP_Connections, flyKeyDown)
 table.insert(_G.PlayerESP_Connections, flyKeyUp)
 
 local flyAndNoclipConn = RunService.Stepped:Connect(function(time, deltaTime)
-    -- Noclip
     if ESP_Settings.Noclip and localPlayer.Character then
         for _, child in pairs(localPlayer.Character:GetDescendants()) do
             if child:IsA("BasePart") and child.CanCollide then
@@ -633,12 +702,10 @@ local flyAndNoclipConn = RunService.Stepped:Connect(function(time, deltaTime)
         local hrp = localPlayer.Character:FindFirstChild("HumanoidRootPart")
         local hum = localPlayer.Character:FindFirstChildOfClass("Humanoid")
         
-        -- WalkSpeed
         if ESP_Settings.WalkSpeedEnabled and hum then
             hum.WalkSpeed = ESP_Settings.WalkSpeed
         end
 
-        -- Fly
         if hrp then
             if ESP_Settings.Fly then
                 if not hrp:FindFirstChild("IY_FlyGyro") then
@@ -735,11 +802,7 @@ local function isTeammateCheck(player, character)
         end
     elseif mode == 6 then
         local tName = player.Team and player.Team.Name or ""
-        if ESP_Settings.TargetTeams[tName] then
-            return false
-        else
-            return true 
-        end
+        if ESP_Settings.TargetTeams[tName] then return false else return true end
     end
     return false
 end
@@ -759,10 +822,7 @@ local function checkVisibility(targetPart, targetCharacter)
     local iterations = 0
     while iterations < 10 do
         local result = workspace:Raycast(origin, direction, raycastParams)
-        
-        if not result then
-            return true 
-        end
+        if not result then return true end
         
         local hitPart = result.Instance
         if hitPart.CanCollide == false or hitPart.Transparency == 1 or hitPart.Name == "HumanoidRootPart" then
@@ -773,7 +833,6 @@ local function checkVisibility(targetPart, targetCharacter)
             return false 
         end
     end
-    
     return false 
 end
 
@@ -864,8 +923,10 @@ local renderConn = RunService.RenderStepped:Connect(function(deltaTime)
     for player, data in pairs(ESP_List) do
         local character = player.Character
         local isTeammate = data.IsTeammate or false
+        local isFriend = ESP_Settings.Friends[player.Name:lower()] or false
 
-        local shouldShow = ESP_Settings.Enabled and character and not (ESP_Settings.TeamCheck and isTeammate)
+        -- Друзья обходят тимчек, их всегда видно
+        local shouldShow = ESP_Settings.Enabled and character and (isFriend or not (ESP_Settings.TeamCheck and isTeammate))
         local rootPos, headPos, legPos, targetPart
         local hum = character and character:FindFirstChildOfClass("Humanoid") or nil
 
@@ -932,14 +993,18 @@ local renderConn = RunService.RenderStepped:Connect(function(deltaTime)
 
         if data.FadeAlpha > 0.01 then
             local isVisible = false
-            if ESP_Settings.WallCheck and targetPart then
+            if ESP_Settings.WallCheck and targetPart and not isFriend then
                 isVisible = checkVisibility(targetPart, character)
             end
 
+            -- Вычисление цветов (салатовый для друзей в приоритете)
             local activeBoxColor = Color3.fromRGB(255, 255, 255)
             local activeChamsColor = Color3.fromRGB(255, 50, 50)
 
-            if ESP_Settings.WallCheck then
+            if isFriend then
+                activeBoxColor = Color3.fromRGB(50, 255, 50) -- Салатовый
+                activeChamsColor = Color3.fromRGB(50, 255, 50)
+            elseif ESP_Settings.WallCheck then
                 if isVisible then
                     activeBoxColor = Color3.fromRGB(255, 50, 50)
                     activeChamsColor = Color3.fromRGB(50, 100, 255)
@@ -948,12 +1013,12 @@ local renderConn = RunService.RenderStepped:Connect(function(deltaTime)
 
             data.Box.Color = activeBoxColor
             data.Box.Transparency = data.FadeAlpha
-            data.NameText.Color = activeBoxColor
+            data.NameText.Color = isFriend and Color3.fromRGB(150, 255, 150) or activeBoxColor
             data.NameText.Transparency = data.FadeAlpha
             data.HealthBar.Transparency = data.FadeAlpha
             data.HealthBarBG.Transparency = data.FadeAlpha
 
-            if ESP_Settings.Chams then
+            if ESP_Settings.Chams or isFriend then -- У друзей чамсы горят всегда
                 if data.Chams.Adornee ~= character then data.Chams.Adornee = character end
                 data.Chams.FillColor = activeChamsColor
                 data.Chams.FillTransparency = ESP_Settings.ChamsFillAlpha + ((1 - ESP_Settings.ChamsFillAlpha) * (1 - data.FadeAlpha))
@@ -979,7 +1044,8 @@ local renderConn = RunService.RenderStepped:Connect(function(deltaTime)
 
                 if ESP_Settings.NameInfo then
                     local dist = math.floor((camera.CFrame.Position - rootPos).Magnitude)
-                    data.NameText.Text = player.Name .. " [" .. dist .. "]"
+                    local prefix = isFriend and "[FRIEND] " or ""
+                    data.NameText.Text = prefix .. player.Name .. " [" .. dist .. "]"
                     data.NameText.Position = Vector2.new(vector.X, vector.Y - height / 2 - 15)
                     data.NameText.Visible = true
                 else
@@ -1005,7 +1071,7 @@ local renderConn = RunService.RenderStepped:Connect(function(deltaTime)
                 if ESP_Settings.Tracers and onScreen then
                     data.Tracer.From = screenCenter
                     data.Tracer.To = Vector2.new(vector.X, vector.Y)
-                    data.Tracer.Color = getTeamColor(player)
+                    data.Tracer.Color = isFriend and Color3.fromRGB(50, 255, 50) or getTeamColor(player)
                     data.Tracer.Thickness = ESP_Settings.TracerThickness
                     data.Tracer.Transparency = (1 - ESP_Settings.TracerTransparency) * data.FadeAlpha
                     data.Tracer.Visible = true
