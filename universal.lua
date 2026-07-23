@@ -1473,6 +1473,146 @@ local function getPlayersArray()
 end
 
 local currentIndex = 1; local lastCheckTick = tick(); local checkInterval = 0.5
+-- === НАСТРОЙКИ ORE ESP ===
+ESP_Settings.OreESP = false
+ESP_Settings.OreMaxDistance = 1500
+ESP_Settings.OreTextSize = 14
+ESP_Settings.OreTextTrans = 1
+
+local OreColors = {
+    ["coal"]     = Color3.fromRGB(150, 150, 150), -- Серый
+    ["copper"]   = Color3.fromRGB(255, 140, 0),   -- Оранжевый
+    ["iron"]     = Color3.fromRGB(255, 255, 255), -- Белый
+    ["gold"]     = Color3.fromRGB(255, 215, 0),   -- Желтый
+    ["titan"]    = Color3.fromRGB(64, 224, 208),  -- Бирюзовый
+    ["obsidian"] = Color3.fromRGB(128, 0, 128),   -- Фиолетовый
+    ["diamond"]  = Color3.fromRGB(0, 191, 255),   -- Голубой
+    ["ruby"]     = Color3.fromRGB(255, 0, 0),     -- Красный
+    ["emerald"]  = Color3.fromRGB(50, 205, 50),   -- Зеленый
+    ["mythril"]  = Color3.fromRGB(0, 0, 255)      -- Синий
+}
+
+-- === ИНТЕРФЕЙС ДЛЯ ORE ESP ===
+local OreSpacer = Instance.new("Frame")
+OreSpacer.Parent = Container
+OreSpacer.BackgroundTransparency = 1
+OreSpacer.Size = UDim2.new(1, 0, 0, 15)
+
+local OreTitle = Instance.new("TextLabel")
+OreTitle.Parent = OreSpacer
+OreTitle.BackgroundTransparency = 1
+OreTitle.Size = UDim2.new(1, 0, 1, 0)
+OreTitle.Font = mainFont
+OreTitle.Text = "-- Ore ESP --"
+OreTitle.TextColor3 = c_Title
+OreTitle.TextSize = 14
+
+createToggle("Enable Ore ESP", "OreESP")
+createInputField("Max Distance", "OreMaxDistance", 10, 10000, false)
+createInputField("Text Size", "OreTextSize", 8, 32, false)
+createInputField("Text Alpha", "OreTextTrans", 0, 1, true)
+
+-- === ЛОГИКА ORE ESP ===
+local OreCache = {}
+
+local function GetOreData(name)
+    local lowerName = string.lower(name)
+    for key, color in pairs(OreColors) do
+        if string.find(lowerName, key) then
+            return key, color
+        end
+    end
+    return nil, nil
+end
+
+local function addOre(instance)
+    if not instance:IsA("BasePart") and not instance:IsA("Model") then return end
+    
+    local oreType, oreColor = GetOreData(instance.Name)
+    if oreType then
+        -- Создаем текст (Drawing API)
+        local textDraw = Drawing.new("Text")
+        textDraw.Visible = false
+        textDraw.Center = true
+        textDraw.Outline = true
+        textDraw.Font = 2
+        
+        -- Создаем подсветку (Highlight)
+        local chams = Instance.new("Highlight")
+        chams.FillColor = oreColor
+        chams.OutlineColor = Color3.new(1, 1, 1)
+        chams.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop
+        chams.Parent = ESP_GUI
+        chams.Adornee = instance
+        chams.Enabled = false
+
+        OreCache[instance] = { Text = textDraw, Chams = chams, Type = string.upper(string.sub(oreType, 1, 1)) .. string.sub(oreType, 2), Color = oreColor }
+        
+        -- Добавляем в глобальные таблицы для функции Kill Script
+        table.insert(_G.PlayerESP_Drawings, textDraw)
+        table.insert(_G.PlayerESP_Highlights, chams)
+    end
+end
+
+-- Сканируем уже существующие объекты
+for _, v in pairs(workspace:GetDescendants()) do 
+    addOre(v) 
+end
+
+-- Отслеживаем появление и удаление руды
+table.insert(_G.PlayerESP_Connections, workspace.DescendantAdded:Connect(addOre))
+table.insert(_G.PlayerESP_Connections, workspace.DescendantRemoving:Connect(function(instance)
+    if OreCache[instance] then
+        OreCache[instance].Text:Remove()
+        OreCache[instance].Chams:Destroy()
+        OreCache[instance] = nil
+    end
+end))
+
+local oreRenderConn = RunService.RenderStepped:Connect(function()
+    if not ESP_Settings.OreESP then
+        for _, data in pairs(OreCache) do
+            data.Text.Visible = false
+            data.Chams.Enabled = false
+        end
+        return
+    end
+
+    for instance, data in pairs(OreCache) do
+        if instance.Parent ~= nil then
+            local pos = instance:IsA("Model") and (instance.PrimaryPart and instance.PrimaryPart.Position or instance:GetBoundingBox().Position) or instance.Position
+            local dist = (camera.CFrame.Position - pos).Magnitude
+            
+            if dist <= ESP_Settings.OreMaxDistance then
+                local screenPos, onScreen = camera:WorldToViewportPoint(pos)
+                if onScreen then
+                    -- Настройки текста
+                    data.Text.Position = Vector2.new(screenPos.X, screenPos.Y)
+                    data.Text.Text = data.Type .. " [" .. math.floor(dist) .. "m]"
+                    data.Text.Color = data.Color
+                    data.Text.Size = ESP_Settings.OreTextSize
+                    data.Text.Transparency = ESP_Settings.OreTextTrans
+                    data.Text.Visible = true
+                    
+                    -- Настройки подсветки
+                    data.Chams.Enabled = true
+                    data.Chams.FillTransparency = 0.5
+                    data.Chams.OutlineTransparency = 0.2
+                else
+                    data.Text.Visible = false
+                    data.Chams.Enabled = false
+                end
+            else
+                data.Text.Visible = false
+                data.Chams.Enabled = false
+            end
+        else
+            data.Text.Visible = false
+            data.Chams.Enabled = false
+        end
+    end
+end)
+table.insert(_G.PlayerESP_Connections, oreRenderConn)
 local renderConn = RunService.RenderStepped:Connect(function(deltaTime)
     local currentTime = tick(); local playersArr = getPlayersArray()
     if currentTime - lastCheckTick >= (checkInterval / math.max(#playersArr, 1)) then
