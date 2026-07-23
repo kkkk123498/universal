@@ -1478,6 +1478,7 @@ local currentIndex = 1; local lastCheckTick = tick(); local checkInterval = 0.5
 -- ==========================================
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
+local UserInputService = game:GetService("UserInputService")
 local CoreGui = game:GetService("CoreGui")
 local camera = workspace.CurrentCamera
 local localPlayer = Players.LocalPlayer
@@ -1490,6 +1491,7 @@ _G.PlayerESP_Instances = _G.PlayerESP_Instances or {}
 
 local ESP_Settings = {
     OreESP = false,
+    ShowDistance = true, -- Новая настройка дистанции
     OreMaxDistance = 1500,
     OreTextSize = 14,
     OreTextTrans = 1,
@@ -1528,7 +1530,7 @@ local MainFrame = Instance.new("Frame")
 MainFrame.Parent = ESP_GUI
 MainFrame.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
 MainFrame.Position = UDim2.new(0, 50, 0, 50)
-MainFrame.Size = UDim2.new(0, 250, 0, 450)
+MainFrame.Size = UDim2.new(0, 250, 0, 480)
 MainFrame.Active = true
 MainFrame.Draggable = true
 
@@ -1542,9 +1544,9 @@ Title.Parent = MainFrame
 Title.BackgroundTransparency = 1
 Title.Size = UDim2.new(1, 0, 0, 30)
 Title.Font = Enum.Font.Code
-Title.Text = "  Ore ESP Menu"
+Title.Text = "  Ore ESP Menu [Right Ctrl]"
 Title.TextColor3 = Color3.new(1, 1, 1)
-Title.TextSize = 18
+Title.TextSize = 16
 Title.TextXAlignment = Enum.TextXAlignment.Left
 
 -- Функция создания переключателей в меню
@@ -1567,9 +1569,20 @@ local function createToggle(text, settingKey)
 end
 
 -- ==========================================
--- ЛОГИКА ORE ESP
+-- УПРАВЛЕНИЕ МЕНЮ И ЛОГИКА ORE ESP
 -- ==========================================
+
+-- Биндим закрытие/открытие меню на Правый Контрол
+local inputConn = UserInputService.InputBegan:Connect(function(input, gameProcessed)
+    if not gameProcessed and input.KeyCode == Enum.KeyCode.RightControl then
+        MainFrame.Visible = not MainFrame.Visible
+    end
+end)
+table.insert(_G.PlayerESP_Connections, inputConn)
+
+-- Основные настройки
 createToggle("Enable Ore ESP", "OreESP")
+createToggle("Show Distance", "ShowDistance")
 
 local OreTitle = Instance.new("TextLabel")
 OreTitle.Parent = MainFrame
@@ -1668,7 +1681,14 @@ local renderConn = RunService.RenderStepped:Connect(function()
                 local screenPos, onScreen = camera:WorldToViewportPoint(pos)
                 if onScreen then
                     data.Text.Position = Vector2.new(screenPos.X, screenPos.Y)
-                    data.Text.Text = data.Type .. " [" .. math.floor(dist) .. "m]"
+                    
+                    -- Проверка настройки отображения дистанции
+                    if ESP_Settings.ShowDistance then
+                        data.Text.Text = data.Type .. " [" .. math.floor(dist) .. "m]"
+                    else
+                        data.Text.Text = data.Type
+                    end
+                    
                     data.Text.Color = data.Color
                     data.Text.Size = ESP_Settings.OreTextSize
                     data.Text.Transparency = ESP_Settings.OreTextTrans
