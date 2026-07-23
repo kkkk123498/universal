@@ -1473,71 +1473,142 @@ local function getPlayersArray()
 end
 
 local currentIndex = 1; local lastCheckTick = tick(); local checkInterval = 0.5
--- === НАСТРОЙКИ ORE ESP ===
-ESP_Settings.OreESP = false
-ESP_Settings.OreMaxDistance = 1500
-ESP_Settings.OreTextSize = 14
-ESP_Settings.OreTextTrans = 1
+-- ==========================================
+-- ОСНОВНЫЕ НАСТРОЙКИ И ГЛОБАЛЬНЫЕ ПЕРЕМЕННЫЕ
+-- ==========================================
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+local CoreGui = game:GetService("CoreGui")
+local camera = workspace.CurrentCamera
+local localPlayer = Players.LocalPlayer
 
-local OreColors = {
-    ["coal"]     = Color3.fromRGB(150, 150, 150), -- Серый
-    ["copper"]   = Color3.fromRGB(255, 140, 0),   -- Оранжевый
-    ["iron"]     = Color3.fromRGB(255, 255, 255), -- Белый
-    ["gold"]     = Color3.fromRGB(255, 215, 0),   -- Желтый
-    ["titan"]    = Color3.fromRGB(64, 224, 208),  -- Бирюзовый
-    ["obsidian"] = Color3.fromRGB(128, 0, 128),   -- Фиолетовый
-    ["diamond"]  = Color3.fromRGB(0, 191, 255),   -- Голубой
-    ["ruby"]     = Color3.fromRGB(255, 0, 0),     -- Красный
-    ["emerald"]  = Color3.fromRGB(50, 205, 50),   -- Зеленый
-    ["mythril"]  = Color3.fromRGB(0, 0, 255)      -- Синий
+-- Таблицы для безопасного удаления скрипта (Kill Script)
+_G.PlayerESP_Drawings = _G.PlayerESP_Drawings or {}
+_G.PlayerESP_Highlights = _G.PlayerESP_Highlights or {}
+_G.PlayerESP_Connections = _G.PlayerESP_Connections or {}
+_G.PlayerESP_Instances = _G.PlayerESP_Instances or {}
+
+local ESP_Settings = {
+    OreESP = false,
+    OreMaxDistance = 1500,
+    OreTextSize = 14,
+    OreTextTrans = 1,
 }
 
--- === ИНТЕРФЕЙС ДЛЯ ORE ESP ===
-local OreSpacer = Instance.new("Frame")
-OreSpacer.Parent = Container
-OreSpacer.BackgroundTransparency = 1
-OreSpacer.Size = UDim2.new(1, 0, 0, 15)
+local OreColors = {
+    ["coal"]     = Color3.fromRGB(150, 150, 150),
+    ["copper"]   = Color3.fromRGB(255, 140, 0),
+    ["iron"]     = Color3.fromRGB(255, 255, 255),
+    ["gold"]     = Color3.fromRGB(255, 215, 0),
+    ["titan"]    = Color3.fromRGB(64, 224, 208),
+    ["obsidian"] = Color3.fromRGB(128, 0, 128),
+    ["diamond"]  = Color3.fromRGB(0, 191, 255),
+    ["ruby"]     = Color3.fromRGB(255, 0, 0),
+    ["emerald"]  = Color3.fromRGB(50, 205, 50),
+    ["mythril"]  = Color3.fromRGB(0, 0, 255)
+}
+
+-- Добавляем настройки для каждой руды по умолчанию (все включены)
+for key, _ in pairs(OreColors) do
+    ESP_Settings["Show_" .. key] = true
+end
+
+-- ==========================================
+-- СОЗДАНИЕ ИНТЕРФЕЙСА (GUI)
+-- ==========================================
+local ESP_GUI = Instance.new("ScreenGui")
+ESP_GUI.Name = "CustomOreESP"
+ESP_GUI.ResetOnSpawn = false
+-- Пытаемся поместить в CoreGui для защиты, если не выйдет - в PlayerGui
+local success = pcall(function() ESP_GUI.Parent = CoreGui end)
+if not success then ESP_GUI.Parent = localPlayer:WaitForChild("PlayerGui") end
+table.insert(_G.PlayerESP_Instances, ESP_GUI)
+
+local MainFrame = Instance.new("Frame")
+MainFrame.Parent = ESP_GUI
+MainFrame.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
+MainFrame.Position = UDim2.new(0, 50, 0, 50)
+MainFrame.Size = UDim2.new(0, 250, 0, 450)
+MainFrame.Active = true
+MainFrame.Draggable = true
+
+local UIListLayout = Instance.new("UIListLayout")
+UIListLayout.Parent = MainFrame
+UIListLayout.SortOrder = Enum.SortOrder.LayoutOrder
+UIListLayout.Padding = UDim.new(0, 5)
+
+local Title = Instance.new("TextLabel")
+Title.Parent = MainFrame
+Title.BackgroundTransparency = 1
+Title.Size = UDim2.new(1, 0, 0, 30)
+Title.Font = Enum.Font.Code
+Title.Text = "  Ore ESP Menu"
+Title.TextColor3 = Color3.new(1, 1, 1)
+Title.TextSize = 18
+Title.TextXAlignment = Enum.TextXAlignment.Left
+
+-- Функция создания переключателей в меню
+local function createToggle(text, settingKey)
+    local btn = Instance.new("TextButton")
+    btn.Parent = MainFrame
+    btn.BackgroundColor3 = ESP_Settings[settingKey] and Color3.fromRGB(50, 150, 50) or Color3.fromRGB(150, 50, 50)
+    btn.Size = UDim2.new(1, -10, 0, 25)
+    btn.Position = UDim2.new(0, 5, 0, 0)
+    btn.Font = Enum.Font.Code
+    btn.Text = " " .. text
+    btn.TextColor3 = Color3.new(1, 1, 1)
+    btn.TextSize = 14
+    btn.TextXAlignment = Enum.TextXAlignment.Left
+    
+    btn.MouseButton1Click:Connect(function()
+        ESP_Settings[settingKey] = not ESP_Settings[settingKey]
+        btn.BackgroundColor3 = ESP_Settings[settingKey] and Color3.fromRGB(50, 150, 50) or Color3.fromRGB(150, 50, 50)
+    end)
+end
+
+-- ==========================================
+-- ЛОГИКА ORE ESP
+-- ==========================================
+createToggle("Enable Ore ESP", "OreESP")
 
 local OreTitle = Instance.new("TextLabel")
-OreTitle.Parent = OreSpacer
+OreTitle.Parent = MainFrame
 OreTitle.BackgroundTransparency = 1
-OreTitle.Size = UDim2.new(1, 0, 1, 0)
-OreTitle.Font = mainFont
-OreTitle.Text = "-- Ore ESP --"
-OreTitle.TextColor3 = c_Title
+OreTitle.Size = UDim2.new(1, 0, 0, 20)
+OreTitle.Font = Enum.Font.Code
+OreTitle.Text = " -- Select Ores --"
+OreTitle.TextColor3 = Color3.fromRGB(200, 200, 200)
 OreTitle.TextSize = 14
 
-createToggle("Enable Ore ESP", "OreESP")
-createInputField("Max Distance", "OreMaxDistance", 10, 10000, false)
-createInputField("Text Size", "OreTextSize", 8, 32, false)
-createInputField("Text Alpha", "OreTextTrans", 0, 1, true)
+-- Генерируем кнопки для каждой руды
+for key, color in pairs(OreColors) do
+    local displayName = string.upper(string.sub(key, 1, 1)) .. string.sub(key, 2)
+    createToggle("Show " .. displayName, "Show_" .. key)
+end
 
--- === ЛОГИКА ORE ESP ===
 local OreCache = {}
 
 local function GetOreData(name)
     local lowerName = string.lower(name)
     for key, color in pairs(OreColors) do
         if string.find(lowerName, key) then
-            return key, color
+            return key, color, string.upper(string.sub(key, 1, 1)) .. string.sub(key, 2)
         end
     end
-    return nil, nil
+    return nil, nil, nil
 end
 
 local function addOre(instance)
     if not instance:IsA("BasePart") and not instance:IsA("Model") then return end
     
-    local oreType, oreColor = GetOreData(instance.Name)
-    if oreType then
-        -- Создаем текст (Drawing API)
+    local oreKey, oreColor, oreName = GetOreData(instance.Name)
+    if oreKey then
         local textDraw = Drawing.new("Text")
         textDraw.Visible = false
         textDraw.Center = true
         textDraw.Outline = true
         textDraw.Font = 2
         
-        -- Создаем подсветку (Highlight)
         local chams = Instance.new("Highlight")
         chams.FillColor = oreColor
         chams.OutlineColor = Color3.new(1, 1, 1)
@@ -1546,20 +1617,36 @@ local function addOre(instance)
         chams.Adornee = instance
         chams.Enabled = false
 
-        OreCache[instance] = { Text = textDraw, Chams = chams, Type = string.upper(string.sub(oreType, 1, 1)) .. string.sub(oreType, 2), Color = oreColor }
+        OreCache[instance] = { 
+            Text = textDraw, 
+            Chams = chams, 
+            Key = oreKey,
+            Type = oreName, 
+            Color = oreColor 
+        }
         
-        -- Добавляем в глобальные таблицы для функции Kill Script
         table.insert(_G.PlayerESP_Drawings, textDraw)
         table.insert(_G.PlayerESP_Highlights, chams)
     end
 end
 
--- Сканируем уже существующие объекты
-for _, v in pairs(workspace:GetDescendants()) do 
-    addOre(v) 
-end
+-- Плавное сканирование существующих объектов, чтобы избежать зависаний
+task.spawn(function()
+    local descendants = workspace:GetDescendants()
+    local processCount = 0
+    
+    for i = 1, #descendants do
+        addOre(descendants[i])
+        processCount = processCount + 1
+        
+        -- Делаем микро-паузу каждые 150 объектов
+        if processCount % 150 == 0 then
+            task.wait()
+        end
+    end
+end)
 
--- Отслеживаем появление и удаление руды
+-- Отслеживание появления и удаления
 table.insert(_G.PlayerESP_Connections, workspace.DescendantAdded:Connect(addOre))
 table.insert(_G.PlayerESP_Connections, workspace.DescendantRemoving:Connect(function(instance)
     if OreCache[instance] then
@@ -1569,24 +1656,17 @@ table.insert(_G.PlayerESP_Connections, workspace.DescendantRemoving:Connect(func
     end
 end))
 
-local oreRenderConn = RunService.RenderStepped:Connect(function()
-    if not ESP_Settings.OreESP then
-        for _, data in pairs(OreCache) do
-            data.Text.Visible = false
-            data.Chams.Enabled = false
-        end
-        return
-    end
-
+-- Рендер ESP
+local renderConn = RunService.RenderStepped:Connect(function()
     for instance, data in pairs(OreCache) do
-        if instance.Parent ~= nil then
+        -- Проверяем включен ли общий ESP и включена ли конкретная руда
+        if ESP_Settings.OreESP and ESP_Settings["Show_" .. data.Key] and instance.Parent ~= nil then
             local pos = instance:IsA("Model") and (instance.PrimaryPart and instance.PrimaryPart.Position or instance:GetBoundingBox().Position) or instance.Position
             local dist = (camera.CFrame.Position - pos).Magnitude
             
             if dist <= ESP_Settings.OreMaxDistance then
                 local screenPos, onScreen = camera:WorldToViewportPoint(pos)
                 if onScreen then
-                    -- Настройки текста
                     data.Text.Position = Vector2.new(screenPos.X, screenPos.Y)
                     data.Text.Text = data.Type .. " [" .. math.floor(dist) .. "m]"
                     data.Text.Color = data.Color
@@ -1594,7 +1674,6 @@ local oreRenderConn = RunService.RenderStepped:Connect(function()
                     data.Text.Transparency = ESP_Settings.OreTextTrans
                     data.Text.Visible = true
                     
-                    -- Настройки подсветки
                     data.Chams.Enabled = true
                     data.Chams.FillTransparency = 0.5
                     data.Chams.OutlineTransparency = 0.2
@@ -1612,7 +1691,46 @@ local oreRenderConn = RunService.RenderStepped:Connect(function()
         end
     end
 end)
-table.insert(_G.PlayerESP_Connections, oreRenderConn)
+table.insert(_G.PlayerESP_Connections, renderConn)
+
+-- ==========================================
+-- КНОПКА KILL SCRIPT (ОЧИСТКА)
+-- ==========================================
+local KillButton = Instance.new("TextButton")
+KillButton.Parent = MainFrame
+KillButton.BackgroundColor3 = Color3.fromRGB(200, 50, 50)
+KillButton.Size = UDim2.new(1, -10, 0, 30)
+KillButton.Position = UDim2.new(0, 5, 0, 0)
+KillButton.Font = Enum.Font.Code
+KillButton.Text = "Kill Script"
+KillButton.TextColor3 = Color3.new(1, 1, 1)
+KillButton.TextSize = 16
+
+KillButton.MouseButton1Click:Connect(function()
+    -- Удаляем все Drawings (Тексты)
+    for _, drawing in pairs(_G.PlayerESP_Drawings) do
+        if drawing and drawing.Remove then drawing:Remove() end
+    end
+    -- Удаляем Highlights
+    for _, highlight in pairs(_G.PlayerESP_Highlights) do
+        if highlight and highlight.Destroy then highlight:Destroy() end
+    end
+    -- Отключаем события
+    for _, connection in pairs(_G.PlayerESP_Connections) do
+        if connection and connection.Disconnect then connection:Disconnect() end
+    end
+    -- Удаляем GUI
+    for _, instance in pairs(_G.PlayerESP_Instances) do
+        if instance and instance.Destroy then instance:Destroy() end
+    end
+    
+    -- Очищаем таблицы
+    _G.PlayerESP_Drawings = {}
+    _G.PlayerESP_Highlights = {}
+    _G.PlayerESP_Connections = {}
+    _G.PlayerESP_Instances = {}
+    OreCache = {}
+end)
 local renderConn = RunService.RenderStepped:Connect(function(deltaTime)
     local currentTime = tick(); local playersArr = getPlayersArray()
     if currentTime - lastCheckTick >= (checkInterval / math.max(#playersArr, 1)) then
