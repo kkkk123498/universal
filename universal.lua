@@ -1491,10 +1491,15 @@ _G.PlayerESP_Instances = _G.PlayerESP_Instances or {}
 
 local ESP_Settings = {
     OreESP = false,
-    ShowDistance = true, -- Новая настройка дистанции
+    ShowDistance = true,
     OreMaxDistance = 1500,
     OreTextSize = 14,
     OreTextTrans = 1,
+    
+    -- Настройки FOV
+    UseFOV = true,
+    ShowFOVCircle = true,
+    FOVRadius = 150
 }
 
 local OreColors = {
@@ -1510,7 +1515,6 @@ local OreColors = {
     ["mythril"]  = Color3.fromRGB(0, 0, 255)
 }
 
--- Добавляем настройки для каждой руды по умолчанию (все включены)
 for key, _ in pairs(OreColors) do
     ESP_Settings["Show_" .. key] = true
 end
@@ -1521,41 +1525,41 @@ end
 local ESP_GUI = Instance.new("ScreenGui")
 ESP_GUI.Name = "CustomOreESP"
 ESP_GUI.ResetOnSpawn = false
--- Пытаемся поместить в CoreGui для защиты, если не выйдет - в PlayerGui
 local success = pcall(function() ESP_GUI.Parent = CoreGui end)
 if not success then ESP_GUI.Parent = localPlayer:WaitForChild("PlayerGui") end
 table.insert(_G.PlayerESP_Instances, ESP_GUI)
 
-local MainFrame = Instance.new("Frame")
+local MainFrame = Instance.new("ScrollingFrame")
 MainFrame.Parent = ESP_GUI
 MainFrame.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
 MainFrame.Position = UDim2.new(0, 50, 0, 50)
-MainFrame.Size = UDim2.new(0, 250, 0, 480)
+MainFrame.Size = UDim2.new(0, 260, 0, 480)
 MainFrame.Active = true
 MainFrame.Draggable = true
+MainFrame.ScrollBarThickness = 6
+MainFrame.CanvasSize = UDim2.new(0, 0, 0, 750) -- Увеличен холст для всех настроек
 
 local UIListLayout = Instance.new("UIListLayout")
 UIListLayout.Parent = MainFrame
 UIListLayout.SortOrder = Enum.SortOrder.LayoutOrder
 UIListLayout.Padding = UDim.new(0, 5)
+UIListLayout.HorizontalAlignment = Enum.HorizontalAlignment.Center
 
 local Title = Instance.new("TextLabel")
 Title.Parent = MainFrame
 Title.BackgroundTransparency = 1
-Title.Size = UDim2.new(1, 0, 0, 30)
+Title.Size = UDim2.new(1, -10, 0, 30)
 Title.Font = Enum.Font.Code
-Title.Text = "  Ore ESP Menu [Right Ctrl]"
+Title.Text = "Ore ESP [Right Ctrl]"
 Title.TextColor3 = Color3.new(1, 1, 1)
 Title.TextSize = 16
 Title.TextXAlignment = Enum.TextXAlignment.Left
 
--- Функция создания переключателей в меню
 local function createToggle(text, settingKey)
     local btn = Instance.new("TextButton")
     btn.Parent = MainFrame
     btn.BackgroundColor3 = ESP_Settings[settingKey] and Color3.fromRGB(50, 150, 50) or Color3.fromRGB(150, 50, 50)
     btn.Size = UDim2.new(1, -10, 0, 25)
-    btn.Position = UDim2.new(0, 5, 0, 0)
     btn.Font = Enum.Font.Code
     btn.Text = " " .. text
     btn.TextColor3 = Color3.new(1, 1, 1)
@@ -1568,11 +1572,56 @@ local function createToggle(text, settingKey)
     end)
 end
 
--- ==========================================
--- УПРАВЛЕНИЕ МЕНЮ И ЛОГИКА ORE ESP
--- ==========================================
+local function createTitle(text)
+    local lbl = Instance.new("TextLabel")
+    lbl.Parent = MainFrame
+    lbl.BackgroundTransparency = 1
+    lbl.Size = UDim2.new(1, -10, 0, 20)
+    lbl.Font = Enum.Font.Code
+    lbl.Text = "-- " .. text .. " --"
+    lbl.TextColor3 = Color3.fromRGB(200, 200, 200)
+    lbl.TextSize = 14
+end
 
--- Биндим закрытие/открытие меню на Правый Контрол
+local function createInput(text, settingKey)
+    local frame = Instance.new("Frame")
+    frame.Parent = MainFrame
+    frame.BackgroundTransparency = 1
+    frame.Size = UDim2.new(1, -10, 0, 25)
+
+    local lbl = Instance.new("TextLabel")
+    lbl.Parent = frame
+    lbl.BackgroundTransparency = 1
+    lbl.Size = UDim2.new(0.6, 0, 1, 0)
+    lbl.Font = Enum.Font.Code
+    lbl.Text = text
+    lbl.TextColor3 = Color3.new(1, 1, 1)
+    lbl.TextSize = 14
+    lbl.TextXAlignment = Enum.TextXAlignment.Left
+
+    local box = Instance.new("TextBox")
+    box.Parent = frame
+    box.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
+    box.Position = UDim2.new(0.6, 0, 0, 0)
+    box.Size = UDim2.new(0.4, 0, 1, 0)
+    box.Font = Enum.Font.Code
+    box.Text = tostring(ESP_Settings[settingKey])
+    box.TextColor3 = Color3.new(1, 1, 1)
+    box.TextSize = 14
+
+    box.FocusLost:Connect(function()
+        local num = tonumber(box.Text)
+        if num then
+            ESP_Settings[settingKey] = num
+        else
+            box.Text = tostring(ESP_Settings[settingKey])
+        end
+    end)
+end
+
+-- ==========================================
+-- ПОСТРОЕНИЕ МЕНЮ
+-- ==========================================
 local inputConn = UserInputService.InputBegan:Connect(function(input, gameProcessed)
     if not gameProcessed and input.KeyCode == Enum.KeyCode.RightControl then
         MainFrame.Visible = not MainFrame.Visible
@@ -1580,26 +1629,35 @@ local inputConn = UserInputService.InputBegan:Connect(function(input, gameProces
 end)
 table.insert(_G.PlayerESP_Connections, inputConn)
 
--- Основные настройки
+createTitle("Main")
 createToggle("Enable Ore ESP", "OreESP")
 createToggle("Show Distance", "ShowDistance")
+createInput("Max Distance:", "OreMaxDistance")
 
-local OreTitle = Instance.new("TextLabel")
-OreTitle.Parent = MainFrame
-OreTitle.BackgroundTransparency = 1
-OreTitle.Size = UDim2.new(1, 0, 0, 20)
-OreTitle.Font = Enum.Font.Code
-OreTitle.Text = " -- Select Ores --"
-OreTitle.TextColor3 = Color3.fromRGB(200, 200, 200)
-OreTitle.TextSize = 14
+createTitle("FOV Circle")
+createToggle("Only in FOV", "UseFOV")
+createToggle("Show FOV Circle", "ShowFOVCircle")
+createInput("FOV Radius:", "FOVRadius")
 
--- Генерируем кнопки для каждой руды
+createTitle("Select Ores")
 for key, color in pairs(OreColors) do
     local displayName = string.upper(string.sub(key, 1, 1)) .. string.sub(key, 2)
     createToggle("Show " .. displayName, "Show_" .. key)
 end
 
+-- ==========================================
+-- ЛОГИКА ORE ESP И FOV
+-- ==========================================
 local OreCache = {}
+
+-- Создаем FOV Круг
+local FOVCircle = Drawing.new("Circle")
+FOVCircle.Visible = false
+FOVCircle.Thickness = 1.5
+FOVCircle.Color = Color3.fromRGB(255, 255, 255)
+FOVCircle.Filled = false
+FOVCircle.Transparency = 0.3
+table.insert(_G.PlayerESP_Drawings, FOVCircle)
 
 local function GetOreData(name)
     local lowerName = string.lower(name)
@@ -1616,6 +1674,13 @@ local function addOre(instance)
     
     local oreKey, oreColor, oreName = GetOreData(instance.Name)
     if oreKey then
+        -- ОПТИМИЗАЦИЯ: Находим позицию 1 раз, чтобы не лагало в цикле рендера
+        local rootPart = instance
+        if instance:IsA("Model") then
+            rootPart = instance.PrimaryPart or instance:FindFirstChildWhichIsA("BasePart")
+        end
+        if not rootPart then return end
+        
         local textDraw = Drawing.new("Text")
         textDraw.Visible = false
         textDraw.Center = true
@@ -1635,7 +1700,8 @@ local function addOre(instance)
             Chams = chams, 
             Key = oreKey,
             Type = oreName, 
-            Color = oreColor 
+            Color = oreColor,
+            Root = rootPart -- Сохраняем готовую деталь
         }
         
         table.insert(_G.PlayerESP_Drawings, textDraw)
@@ -1643,7 +1709,7 @@ local function addOre(instance)
     end
 end
 
--- Плавное сканирование существующих объектов, чтобы избежать зависаний
+-- Ультра-плавное сканирование существующих объектов (без фризов)
 task.spawn(function()
     local descendants = workspace:GetDescendants()
     local processCount = 0
@@ -1652,14 +1718,13 @@ task.spawn(function()
         addOre(descendants[i])
         processCount = processCount + 1
         
-        -- Делаем микро-паузу каждые 150 объектов
-        if processCount % 150 == 0 then
-            task.wait()
+        -- Используем Heartbeat для синхронизации с кадрами игры
+        if processCount % 50 == 0 then
+            RunService.Heartbeat:Wait()
         end
     end
 end)
 
--- Отслеживание появления и удаления
 table.insert(_G.PlayerESP_Connections, workspace.DescendantAdded:Connect(addOre))
 table.insert(_G.PlayerESP_Connections, workspace.DescendantRemoving:Connect(function(instance)
     if OreCache[instance] then
@@ -1669,34 +1734,61 @@ table.insert(_G.PlayerESP_Connections, workspace.DescendantRemoving:Connect(func
     end
 end))
 
--- Рендер ESP
+-- Рендер ESP и FOV
 local renderConn = RunService.RenderStepped:Connect(function()
+    local camPos = camera.CFrame.Position
+    local viewportSize = camera.ViewportSize
+    local screenCenter = Vector2.new(viewportSize.X / 2, viewportSize.Y / 2)
+    
+    -- Обновляем настройки круга FOV
+    if ESP_Settings.OreESP and ESP_Settings.UseFOV and ESP_Settings.ShowFOVCircle then
+        FOVCircle.Position = screenCenter
+        FOVCircle.Radius = ESP_Settings.FOVRadius
+        FOVCircle.Visible = true
+    else
+        FOVCircle.Visible = false
+    end
+
     for instance, data in pairs(OreCache) do
-        -- Проверяем включен ли общий ESP и включена ли конкретная руда
+        -- Быстрая проверка
         if ESP_Settings.OreESP and ESP_Settings["Show_" .. data.Key] and instance.Parent ~= nil then
-            local pos = instance:IsA("Model") and (instance.PrimaryPart and instance.PrimaryPart.Position or instance:GetBoundingBox().Position) or instance.Position
-            local dist = (camera.CFrame.Position - pos).Magnitude
+            -- ОПТИМИЗАЦИЯ: берем позицию из заранее сохраненной Root детали
+            local pos = data.Root.Position 
+            local dist = (camPos - pos).Magnitude
             
             if dist <= ESP_Settings.OreMaxDistance then
                 local screenPos, onScreen = camera:WorldToViewportPoint(pos)
                 if onScreen then
-                    data.Text.Position = Vector2.new(screenPos.X, screenPos.Y)
+                    local screenVec = Vector2.new(screenPos.X, screenPos.Y)
+                    local inFOV = true
                     
-                    -- Проверка настройки отображения дистанции
-                    if ESP_Settings.ShowDistance then
-                        data.Text.Text = data.Type .. " [" .. math.floor(dist) .. "m]"
-                    else
-                        data.Text.Text = data.Type
+                    -- Проверка на попадание в круг FOV
+                    if ESP_Settings.UseFOV then
+                        local distFromCenter = (screenVec - screenCenter).Magnitude
+                        if distFromCenter > ESP_Settings.FOVRadius then
+                            inFOV = false
+                        end
                     end
                     
-                    data.Text.Color = data.Color
-                    data.Text.Size = ESP_Settings.OreTextSize
-                    data.Text.Transparency = ESP_Settings.OreTextTrans
-                    data.Text.Visible = true
-                    
-                    data.Chams.Enabled = true
-                    data.Chams.FillTransparency = 0.5
-                    data.Chams.OutlineTransparency = 0.2
+                    if inFOV then
+                        data.Text.Position = screenVec
+                        if ESP_Settings.ShowDistance then
+                            data.Text.Text = data.Type .. " [" .. math.floor(dist) .. "m]"
+                        else
+                            data.Text.Text = data.Type
+                        end
+                        data.Text.Color = data.Color
+                        data.Text.Size = ESP_Settings.OreTextSize
+                        data.Text.Transparency = ESP_Settings.OreTextTrans
+                        data.Text.Visible = true
+                        
+                        data.Chams.Enabled = true
+                        data.Chams.FillTransparency = 0.5
+                        data.Chams.OutlineTransparency = 0.2
+                    else
+                        data.Text.Visible = false
+                        data.Chams.Enabled = false
+                    end
                 else
                     data.Text.Visible = false
                     data.Chams.Enabled = false
@@ -1720,31 +1812,25 @@ local KillButton = Instance.new("TextButton")
 KillButton.Parent = MainFrame
 KillButton.BackgroundColor3 = Color3.fromRGB(200, 50, 50)
 KillButton.Size = UDim2.new(1, -10, 0, 30)
-KillButton.Position = UDim2.new(0, 5, 0, 0)
 KillButton.Font = Enum.Font.Code
 KillButton.Text = "Kill Script"
 KillButton.TextColor3 = Color3.new(1, 1, 1)
 KillButton.TextSize = 16
 
 KillButton.MouseButton1Click:Connect(function()
-    -- Удаляем все Drawings (Тексты)
     for _, drawing in pairs(_G.PlayerESP_Drawings) do
         if drawing and drawing.Remove then drawing:Remove() end
     end
-    -- Удаляем Highlights
     for _, highlight in pairs(_G.PlayerESP_Highlights) do
         if highlight and highlight.Destroy then highlight:Destroy() end
     end
-    -- Отключаем события
     for _, connection in pairs(_G.PlayerESP_Connections) do
         if connection and connection.Disconnect then connection:Disconnect() end
     end
-    -- Удаляем GUI
     for _, instance in pairs(_G.PlayerESP_Instances) do
         if instance and instance.Destroy then instance:Destroy() end
     end
     
-    -- Очищаем таблицы
     _G.PlayerESP_Drawings = {}
     _G.PlayerESP_Highlights = {}
     _G.PlayerESP_Connections = {}
